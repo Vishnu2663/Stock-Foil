@@ -6,7 +6,7 @@
  *
  * It is a record both sides agreed on, NOT an employer-signed payslip.
  */
-import { verifyChain, type Receipt } from './index';
+import { receiptDays, verifyChain, type Receipt } from './index';
 
 export interface CertMonth {
   /** yyyy-mm */
@@ -57,7 +57,7 @@ export function buildCertificate(ledger: Receipt[], worker: string, employer: st
     .reverse()
     .map((r) => {
       const paidRec = mine.filter((p) => p.verdict === 'paid' && p.cardId === r.cardId && p.month === r.month).sort((a, b) => b.seq - a.seq)[0];
-      return { m: r.month, days: r.agreedDays.length, adv: r.agreedAdv, net: r.netMinor, h: r.hash.slice(0, 8), ...(paidRec ? { paid: paidRec.netMinor } : {}) };
+      return { m: r.month, days: receiptDays(r), adv: r.agreedAdv, net: r.netMinor, h: r.hash.slice(0, 8), ...(paidRec ? { paid: paidRec.netMinor } : {}) };
     });
   const first = [...byMonth.values()][0];
   return {
@@ -88,7 +88,7 @@ export async function verifyCertificate(cert: Certificate, ledger: Receipt[]): P
   for (const m of cert.months) {
     const r = ledger.find((x) => x.hash.startsWith(m.h) && x.month === m.m && norm(x.worker) === norm(cert.worker) && norm(x.employer) === norm(cert.employer) && COUNTED.has(x.verdict));
     if (!r) problems.push(`${m.m}: no matching receipt.`);
-    else if (r.agreedDays.length !== m.days || r.agreedAdv !== m.adv || r.netMinor !== m.net) problems.push(`${m.m}: the figures do not match the ledger.`);
+    else if (receiptDays(r) !== m.days || r.agreedAdv !== m.adv || r.netMinor !== m.net) problems.push(`${m.m}: the figures do not match the ledger.`);
     else if (m.paid !== undefined && !ledger.some((p) => p.verdict === 'paid' && p.cardId === r.cardId && p.month === m.m && p.netMinor === m.paid)) problems.push(`${m.m}: the recorded payment is not in the ledger.`);
   }
   if (cert.totalDays !== cert.months.reduce((s, x) => s + x.days, 0)) problems.push('Total days do not add up.');

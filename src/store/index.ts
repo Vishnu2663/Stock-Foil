@@ -85,6 +85,8 @@ export interface Receipt {
   currency: string;
   /** a wage change agreed at payday, if any (committed to by the hash) */
   rateChange?: { fromDay: number; rateMinor: number };
+  /** half-day cards: how many agreed half-day circles (each worth half a day); absent on ordinary receipts */
+  halfUnits?: number;
   prev: string;
   hash: string;
 }
@@ -96,7 +98,10 @@ export async function sha256Hex(s: string): Promise<string> {
   return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
-const body = (r: Omit<Receipt, 'hash'>) => JSON.stringify([r.seq, r.at, r.cardId, r.month, r.worker, r.employer, r.verdict, r.agreedDays, r.stockOnlyDays, r.foilOnlyDays, r.agreedAdv, r.netMinor, r.disputedMinor, r.currency, r.prev, ...(r.rateChange ? [r.rateChange.fromDay, r.rateChange.rateMinor] : [])]);
+const body = (r: Omit<Receipt, 'hash'>) => JSON.stringify([r.seq, r.at, r.cardId, r.month, r.worker, r.employer, r.verdict, r.agreedDays, r.stockOnlyDays, r.foilOnlyDays, r.agreedAdv, r.netMinor, r.disputedMinor, r.currency, r.prev, ...(r.rateChange ? [r.rateChange.fromDay, r.rateChange.rateMinor] : []), ...(r.halfUnits !== undefined ? ['h', r.halfUnits] : [])]);
+
+/** Agreed days on a receipt, counting half-day circles as halves. */
+export const receiptDays = (r: Pick<Receipt, 'agreedDays' | 'halfUnits'>): number => (r.halfUnits !== undefined ? r.halfUnits / 2 : r.agreedDays.length);
 
 export async function addReceipt(r: Omit<Receipt, 'seq' | 'at' | 'prev' | 'hash'>): Promise<Receipt> {
   const all = loadReceipts();

@@ -986,19 +986,24 @@ body.is-scrolling .ambient i, body.is-scrolling .pc-aura, body.is-scrolling .ton
 }
 @media (prefers-reduced-motion: reduce) { .pb-step, .pb-op, .pb-v, .pb-bar::after { animation: none !important; } }
 
-/* little party poppers when the result card lands */
-.pc-pops { position: absolute; left: 0; right: 0; bottom: 56px; height: 0; pointer-events: none; z-index: 3; }
-.pc-pop { position: absolute; bottom: 0; width: var(--s); height: calc(var(--s) * .55); border-radius: 1.5px; background: var(--c); opacity: 0; will-change: transform, opacity; animation: pcPop 1.25s var(--d) cubic-bezier(.12, .8, .3, 1) both; }
-.pc-pop.l { left: 4%; } .pc-pop.r { right: 4%; }
+/* little party poppers over the whole result card */
+.pc-pops { position: absolute; left: 0; right: 0; top: 0; bottom: 46px; pointer-events: none; z-index: 3; overflow: visible; }
+.pc-pop { position: absolute; left: var(--ox); top: var(--oy); width: var(--s); height: calc(var(--s) * .55); border-radius: 1.5px; background: var(--c); opacity: 0; will-change: transform, opacity; animation: pcPop 1.35s var(--d) cubic-bezier(.12, .8, .3, 1) both; }
+.pc-pop.rain { animation: pcRain 1.9s var(--d) cubic-bezier(.3, .2, .5, 1) both; }
 @keyframes pcPop {
   0% { opacity: 0; transform: translate(0, 0) rotate(0) scale(.3); }
   8% { opacity: 1; }
-  45% { opacity: 1; transform: translate(calc(var(--dx) * .85), var(--dy)) rotate(calc(var(--rot) * .6)) scale(1); }
-  100% { opacity: 0; transform: translate(var(--dx), calc(var(--dy) + 70px)) rotate(var(--rot)) scale(.9); }
+  45% { opacity: 1; transform: translate(calc(var(--dx) * .85), calc(var(--dy) * .9)) rotate(calc(var(--rot) * .6)) scale(1); }
+  100% { opacity: 0; transform: translate(var(--dx), calc(var(--dy) + 60px)) rotate(var(--rot)) scale(.9); }
 }
-.pc-pop-ring { position: absolute; bottom: -8px; width: 26px; height: 26px; border-radius: 50%; border: 2px solid var(--tone); opacity: 0; animation: pcRingPop .55s 2.1s ease-out both; }
-.pc-pop-ring.l { left: calc(4% - 8px); } .pc-pop-ring.r { right: calc(4% - 8px); }
-@keyframes pcRingPop { 0% { opacity: .9; transform: scale(.3); } 100% { opacity: 0; transform: scale(2.4); } }
+@keyframes pcRain {
+  0% { opacity: 0; transform: translate(0, 0) rotate(0); }
+  12% { opacity: 1; }
+  80% { opacity: 1; }
+  100% { opacity: 0; transform: translate(var(--dx), var(--dy)) rotate(var(--rot)); }
+}
+.pc-pop-ring { position: absolute; width: 28px; height: 28px; margin: -14px 0 0 -14px; border-radius: 50%; border: 2px solid var(--tone); opacity: 0; animation: pcRingPop .6s 2.05s ease-out both; }
+@keyframes pcRingPop { 0% { opacity: .9; transform: scale(.3); } 100% { opacity: 0; transform: scale(2.6); } }
 @media (prefers-reduced-motion: reduce) { .pc-pops { display: none; } }
 
 /* ================= payday scan page ================= */
@@ -1098,3 +1103,72 @@ button .btn-ico { vertical-align: -4px; margin-right: 6px; flex: none; }
 }
 body.is-scrolling .nav-pill::after { animation-play-state: paused; }
 @media (prefers-reduced-motion: reduce) { .top nav > * , .nav-pill::after { animation: none !important; } .nav-lbl { transition: none; } }
+
+/* ---- wage change: a clear switch card, and a badge when it is on ---- */
+.wagebox { margin: 6px 0 14px; border: 1px solid var(--line); border-radius: 16px; background: color-mix(in srgb, var(--paper-2) 50%, transparent); transition: border-color .2s, background .2s, box-shadow .2s; }
+.wagebox.on { border-color: color-mix(in srgb, var(--amber) 65%, transparent); background: color-mix(in srgb, var(--amber) 9%, transparent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--amber) 12%, transparent); }
+.wagebox-head { display: flex; align-items: center; gap: 12px; padding: 12px 14px; margin: 0; cursor: pointer; position: relative; font-family: system-ui, sans-serif; color: var(--ink); }
+.wagebox-head input { position: absolute; opacity: 0; pointer-events: none; }
+.wagebox-head > i { flex: none; width: 42px; height: 24px; border-radius: 13px; background: var(--line); position: relative; transition: background .2s; }
+.wagebox-head > i::after { content: ''; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: #fff; transition: transform .22s cubic-bezier(.3, 1.5, .5, 1); }
+.wagebox.on .wagebox-head > i { background: var(--amber); }
+.wagebox.on .wagebox-head > i::after { transform: translateX(18px); }
+.wagebox-head input:focus-visible + i { box-shadow: 0 0 0 3px color-mix(in srgb, var(--red) 35%, transparent); }
+.wagebox-txt { flex: 1; min-width: 0; }
+.wagebox-txt b { display: block; font-size: 1rem; }
+.wagebox-txt small { display: block; margin-top: 2px; font-size: .82rem; line-height: 1.4; color: var(--ink-2); font-weight: 400; }
+.wagebox-state { flex: none; font: 800 .72rem system-ui, sans-serif; font-style: normal; letter-spacing: .1em; padding: 4px 10px; border-radius: 999px; background: var(--paper-2); color: var(--ink-2); }
+.wagebox.on .wagebox-state { background: var(--amber); color: #2a1b00; }
+.wagebox-body { padding: 4px 14px 14px; border-top: 1px solid color-mix(in srgb, var(--amber) 30%, transparent); }
+.wage-badge { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; margin: 0 0 12px; padding: 10px 14px; border-radius: 12px; font: 600 .9rem system-ui, sans-serif; color: #ffe2a8; background: linear-gradient(90deg, color-mix(in srgb, var(--amber) 22%, transparent), color-mix(in srgb, var(--amber) 8%, transparent)); border: 1px solid color-mix(in srgb, var(--amber) 55%, transparent); animation: wbIn .45s cubic-bezier(.2, .9, .3, 1.2) both; }
+.wage-badge b { color: #ffd166; letter-spacing: .02em; }
+.wage-badge b::before { content: '↑'; display: inline-grid; place-items: center; width: 20px; height: 20px; margin-right: 8px; border-radius: 50%; background: var(--amber); color: #2a1b00; font-size: .8rem; }
+.wage-badge i { font-style: normal; opacity: .8; }
+.wage-badge span { margin-left: auto; padding: 2px 10px; border-radius: 999px; background: rgba(0, 0, 0, .25); font-size: .78rem; }
+@keyframes wbIn { from { opacity: 0; transform: translateY(-6px) scale(.98); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .wage-badge { animation: none; } }
+
+/* ---- review calendar: a circle per punch slot (one, or two on half-day cards), and a plain-words legend ---- */
+.cal button { min-height: 52px; gap: 4px; }
+.cal .dnum { font-weight: 700; font-size: .92rem; }
+.cal .slots { display: flex; gap: 5px; align-items: center; justify-content: center; min-height: 16px; }
+.slot { display: inline-grid; place-items: center; width: 16px; height: 16px; border-radius: 50%; box-sizing: border-box; border: 2px solid color-mix(in srgb, var(--ink-2) 45%, transparent); font: 800 .52rem system-ui, sans-serif; line-height: 1; color: #fff; flex: none; }
+.slot.none { background: transparent; }
+.slot.both { background: #2fbf71; border-color: #2fbf71; }
+.slot.stockOnly, .slot.foilOnly { background: #e3503f; border-color: #e3503f; }
+.slot.unsure { border-style: dashed; border-color: var(--amber); }
+.slot.sus { outline: 2px dotted var(--bad); outline-offset: 1px; }
+.cal.halves button { min-height: 56px; }
+.cal.halves .slot { width: 15px; height: 15px; }
+.cal .none { opacity: 1; }
+.cal button.none .dnum { opacity: .7; }
+.cal .both { background: color-mix(in srgb, #2fbf71 14%, var(--card)); border-color: color-mix(in srgb, #2fbf71 70%, transparent); }
+.cal .stockOnly, .cal .foilOnly { background: color-mix(in srgb, #e3503f 15%, var(--card)); border-color: #e3503f; }
+.cal .unsure { outline: none; }
+.cal .sus { outline: none; background: color-mix(in srgb, var(--amber) 14%, var(--card)); }
+
+.legend { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px 16px; margin-top: 12px; padding: 12px 14px; border-radius: 14px; border: 1px solid var(--line); background: color-mix(in srgb, var(--paper-2) 50%, transparent); }
+.legend-item { display: flex; align-items: flex-start; gap: 10px; font-size: .8rem; line-height: 1.4; color: var(--ink-2); }
+.legend-item > .slot, .legend-item > .slot-pair { margin-top: 1px; }
+.legend-item .slot { width: 18px; height: 18px; }
+.legend-item b { display: block; color: var(--ink); font-size: .84rem; }
+.legend-item.wide { grid-column: 1 / -1; padding-top: 8px; border-top: 1px solid var(--line); }
+.slot-pair { display: inline-flex; gap: 4px; }
+
+/* ---- full / half day presentation ---- */
+.pb-step.full { border-color: color-mix(in srgb, #2fbf71 55%, transparent); background: color-mix(in srgb, #2fbf71 10%, transparent); }
+.pb-step.half { border-color: color-mix(in srgb, #6aa9ff 55%, transparent); background: color-mix(in srgb, #6aa9ff 10%, transparent); }
+.daysum { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 4px 0 12px; padding: 10px 14px; border-radius: 14px; border: 1px solid var(--line); background: color-mix(in srgb, var(--paper-2) 55%, transparent); font-family: system-ui, sans-serif; }
+.daysum > div { display: flex; align-items: center; gap: 8px; }
+.daysum b { font: 800 1.5rem 'Iowan Old Style', Georgia, serif; font-variant-numeric: tabular-nums; }
+.daysum span { display: flex; flex-direction: column; font-size: .82rem; font-weight: 700; line-height: 1.2; }
+.daysum small { font-weight: 500; color: var(--ink-2); font-size: .7rem; }
+.daysum i { font-style: normal; font-weight: 800; color: var(--ink-2); }
+.daysum .tot b { color: #2fbf71; }
+.cal .dt { margin-left: 4px; padding: 0 5px; border-radius: 6px; font: 800 .5rem system-ui, sans-serif; font-style: normal; letter-spacing: .05em; vertical-align: 2px; }
+.cal .dt.full { background: color-mix(in srgb, #2fbf71 30%, transparent); color: #7ee2a6; }
+.cal .dt.half { background: color-mix(in srgb, #6aa9ff 30%, transparent); color: #9cc6ff; font-size: .62rem; }
+.pc-split { font: 800 9px system-ui, sans-serif; letter-spacing: .1em; fill: #5b4d3a; text-transform: uppercase; }
+.pc-ripple.one { stroke: #ff5a48; }
+.pc-ripple.both { stroke: #2fbf71; }
+.slip .tok.half, .tok.half { background: #dbe9ff; color: #274a7a; border-color: #6aa9ff; font-weight: 800; }

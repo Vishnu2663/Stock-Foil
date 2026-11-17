@@ -89,6 +89,18 @@ export function compareHalves(stock: HalfMarks, foil: HalfMarks): Comparison {
   return res;
 }
 
+/**
+ * Splits the AGREED days into full days (both circles of the date punched, on both halves of the card)
+ * and half days (one circle). On cards with a single circle per date every agreed day is a full day.
+ */
+export function splitDays(cmp: Comparison): { full: number[]; half: number[] } {
+  if (!cmp.halves) return { full: [...cmp.agreedDays], half: [] };
+  const am = new Set(cmp.agreedDays);
+  const pm = new Set(cmp.agreedPm);
+  const all = [...new Set([...am, ...pm])].sort((a, b) => a - b);
+  return { full: all.filter((d) => am.has(d) && pm.has(d)), half: all.filter((d) => am.has(d) !== pm.has(d)) };
+}
+
 /** A wage change agreed at payday: days numbered fromDay or later are paid at rateMinor. */
 export interface RateChange {
   fromDay: number;

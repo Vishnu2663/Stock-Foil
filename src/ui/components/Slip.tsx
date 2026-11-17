@@ -3,6 +3,7 @@ import { formatMoney } from '../../core/card';
 import { speak, speechSupported, stopSpeaking } from '../../ai/speech';
 import { offlineExplain } from '../../ai';
 import { LANGS, monthName, t } from '../../i18n';
+import { splitDays } from '../../core/wages';
 import type { PairResult } from '../../vision/pair';
 import { useApp } from '../ctx';
 import { printArea } from '../imageIO';
@@ -13,7 +14,8 @@ export function Slip({ r, lang, explain }: { r: PairResult; lang: string; explai
   const { spec, pay, cmp } = r;
   const a = pay.agreed;
   const m = (v: number) => formatMoney(v, spec.currency, lang);
-  const oneSided = [...cmp.stockOnlyDays, ...cmp.foilOnlyDays];
+  const oneSided = [...new Set([...cmp.stockOnlyDays, ...cmp.foilOnlyDays, ...cmp.stockOnlyPm, ...cmp.foilOnlyPm])].sort((x, y) => x - y);
+  const dt = splitDays(cmp);
   const text = explain ?? offlineExplain(r, lang);
   const [speaking, setSpeaking] = useState(false);
   return (
@@ -27,13 +29,20 @@ export function Slip({ r, lang, explain }: { r: PairResult; lang: string; explai
         </div>
         <div className="line">
           <span className="e">🧱</span>
-          <span className="l">{t(lang, 'slipDays')}</span>
+          <span className="l">{t(lang, 'slipDays')}{cmp.halves && <small style={{ display: 'block', fontWeight: 400 }}>{dt.full.length} full + {dt.half.length} half (half wage each)</small>}</span>
           <b>{a.days}</b>
         </div>
         <div className="tokens" aria-hidden>
-          {cmp.agreedDays.map((d) => (
-            <span className="tok" key={d} title={String(d)}>✓</span>
-          ))}
+          {cmp.halves
+            ? (
+              <>
+                {dt.full.map((d) => <span className="tok" key={'f' + d} title={`${d} · full day`}>✓</span>)}
+                {dt.half.map((d) => <span className="tok half" key={'h' + d} title={`${d} · half day`}>½</span>)}
+              </>
+            )
+            : cmp.agreedDays.map((d) => (
+              <span className="tok" key={d} title={String(d)}>✓</span>
+            ))}
           {oneSided.map((d) => (
             <span className="tok dis" key={'d' + d} title={String(d)}>?</span>
           ))}

@@ -97,7 +97,7 @@ export function App() {
   ];
   /** edit a saved card: the printed halves cannot change, so it becomes a revised card that replaces it */
   const editCard = (c: CardSpec) => {
-    setDraft({ worker: c.worker, employer: c.employer, year: c.year, month: c.month, rateMinor: c.rateMinor, advMinor: c.advMinor, currency: c.currency, lang: c.lang, carryMinor: c.carryMinor, revisedFrom: c.id });
+    setDraft({ worker: c.worker, employer: c.employer, year: c.year, month: c.month, rateMinor: c.rateMinor, advMinor: c.advMinor, currency: c.currency, lang: c.lang, carryMinor: c.carryMinor, halves: !!c.halves, revisedFrom: c.id });
     go('issue');
   };
   const reprint = reprintId ? loadCards().find((c) => c.id === reprintId) : undefined;

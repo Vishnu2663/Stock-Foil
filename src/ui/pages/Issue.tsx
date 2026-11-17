@@ -30,12 +30,14 @@ export function Issue({ initial, draft }: { initial?: CardSpec; draft?: Partial<
   const reprinting = !!initial;
   const [paired, setPaired] = useState(initial ? !!initial.pairing : true);
   const [pairing, setPairing] = useState<Pairing>(initial?.pairing ?? newPairing());
+  // half-day circles: two punch circles per date. On for new cards; a reprint keeps the card as printed.
+  const [halves, setHalves] = useState(initial ? !!initial.halves : seed?.halves ?? true);
 
   const spec = useMemo(() => {
     const [y, m] = ym.split('-').map(Number);
-    return newCardSpec({ id, year: y || now.getFullYear(), month: m || 1, rateMinor: Math.round(rate * 100), advMinor: Math.round(adv * 100), currency, worker, employer, lang, carryMinor: Math.round(carry * 100), pairing: paired ? pairing : undefined, revisedFrom: editing });
+    return newCardSpec({ id, year: y || now.getFullYear(), month: m || 1, rateMinor: Math.round(rate * 100), advMinor: Math.round(adv * 100), currency, worker, employer, lang, carryMinor: Math.round(carry * 100), pairing: paired ? pairing : undefined, halves, revisedFrom: editing });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id, ym, rate, adv, currency, worker, employer, lang, carry, paired, pairing, editing]);
+  }, [id, ym, rate, adv, currency, worker, employer, lang, carry, paired, pairing, halves, editing]);
   const svg = useMemo(() => sheetSvg(spec, lang), [spec, lang]);
   /** save the card; an edited card replaces the one it revises */
   const persist = () => {
@@ -74,6 +76,13 @@ export function Issue({ initial, draft }: { initial?: CardSpec; draft?: Partial<
             <i aria-hidden />
             <span><b>Pairing code</b> <em className="pill ok">recommended</em>
               <small>{reprinting ? 'A reprint keeps the card exactly as it was.' : 'The QR carries a secret that must match the other half, so a sloppy cut never fails a genuine pair and the other half cannot be faked.'}</small>
+            </span>
+          </label>
+          <label className={`switch ${halves ? 'on' : ''} ${reprinting ? 'dis' : ''}`}>
+            <input type="checkbox" checked={halves} disabled={reprinting} onChange={(e) => setHalves(e.target.checked)} />
+            <i aria-hidden />
+            <span><b>Half-day circles</b> <em className="pill ok">two per date</em>
+              <small>{reprinting ? 'A reprint keeps the card exactly as it was.' : 'Every date gets two punch circles: left for the first half, right for the second. One circle is half a day\'s wage, both is a full day, so a half day can be recorded and scanned without doubt.'}</small>
             </span>
           </label>
           <div className="field"><label>Language on the card and slip</label>

@@ -1,5 +1,5 @@
 import { applyH } from '../core/homography';
-import { advCells, dayCells, SAMPLE_R } from '../core/layout';
+import { advCells, dayCells, pmCells, SAMPLE_R } from '../core/layout';
 import type { CellStatus } from '../core/wages';
 import type { HalfScan, PhotoScan } from '../vision/detect';
 import { downscaleRGBA, type RGBA } from '../vision/image';
@@ -49,7 +49,7 @@ export const STATUS_COLOR: Record<CellStatus | 'unsure', string> = {
 };
 
 /** Draw the photo and colour-code every punch target; also trace the measured cut edge. */
-export function drawOverlay(canvas: HTMLCanvasElement, photo: RGBA, scan: PhotoScan, half: HalfScan, dayStatus: CellStatus[], advStatus: CellStatus[]) {
+export function drawOverlay(canvas: HTMLCanvasElement, photo: RGBA, scan: PhotoScan, half: HalfScan, dayStatus: CellStatus[], advStatus: CellStatus[], pmStatus: CellStatus[] = []) {
   const k = rgbaToCanvas(photo, canvas);
   const ctx = canvas.getContext('2d')!;
   const sp = half.pxPerMm * k;
@@ -70,11 +70,17 @@ export function drawOverlay(canvas: HTMLCanvasElement, photo: RGBA, scan: PhotoS
     ctx.textAlign = 'center';
     ctx.fillText(label, x, y - sp * 4.3);
   };
-  const dc = dayCells(spec.year, spec.month);
+  const dc = dayCells(spec.year, spec.month, !!spec.halves);
   dc.forEach((c, i) => {
     const r = half.days[i];
     draw(c.cx, c.cy, dayStatus[i] ?? 'none', !!r?.uncertain && !r.manual, String(c.n));
   });
+  if (spec.halves) {
+    pmCells(spec.year, spec.month).forEach((c, i) => {
+      const r = half.pm[i];
+      draw(c.cx, c.cy, pmStatus[i] ?? 'none', !!r?.uncertain && !r.manual, '');
+    });
+  }
   advCells().forEach((c, i) => {
     const r = half.adv[i];
     draw(c.cx, c.cy, advStatus[i] ?? 'none', !!r?.uncertain && !r.manual, `A${c.n}`);

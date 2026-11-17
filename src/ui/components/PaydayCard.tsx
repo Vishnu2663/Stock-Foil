@@ -20,6 +20,10 @@ export interface PaydayCardProps {
   stamp: string;
   title: string;
   dayStatus: CellStatus[];
+  /** second-half circle of each date (half-day cards) */
+  pmStatus?: CellStatus[];
+  /** half-day cards: agreed full days and half days */
+  split?: { full: number; half: number };
   advStatus: CellStatus[];
   agreedDays: number;
   agreedAdv: number;
@@ -47,33 +51,50 @@ const POP_COLORS = {
   warn: ['#f6a609', '#ffd166', '#ff8a3d', '#ffffff'],
 } as const;
 
-/** Two little party poppers going off at the bottom corners as the stamp lands. Small on purpose. */
+/**
+ * Little party poppers over the whole card, going off as the stamp lands: one at each corner firing
+ * across the card, plus a short fall of confetti from the top edge. Small pieces, short-lived.
+ */
 function PartyPops({ tone }: { tone: 'ok' | 'warn' }) {
   const colors = POP_COLORS[tone];
-  const per = tone === 'ok' ? 13 : 8;
-  const pieces: { k: string; side: 'l' | 'r'; dx: number; dy: number; rot: number; s: number; c: string; d: number }[] = [];
-  for (const side of ['l', 'r'] as const) {
+  const per = tone === 'ok' ? 9 : 5;
+  const rain = tone === 'ok' ? 16 : 8;
+  type Piece = { k: string; rainy: boolean; ox: number; oy: number; dx: number; dy: number; rot: number; s: number; c: string; d: number };
+  const pieces: Piece[] = [];
+  const corners = [
+    { id: 'bl', ox: 3, oy: 97, sx: 1, sy: -1 },
+    { id: 'br', ox: 97, oy: 97, sx: -1, sy: -1 },
+    { id: 'tl', ox: 3, oy: 3, sx: 1, sy: 1 },
+    { id: 'tr', ox: 97, oy: 3, sx: -1, sy: 1 },
+  ];
+  corners.forEach((cn, ci) => {
     for (let i = 0; i < per; i++) {
       const t = (i + 0.5) / per;
-      const spread = (-72 + t * 50) * (Math.PI / 180); // fans up and inwards, never far
-      const dist = 62 + ((i * 37) % 64);
-      const sx = side === 'l' ? 1 : -1;
+      const ang = (18 + t * 56) * (Math.PI / 180); // 18°..74° away from the corner, fanning across the card
+      const dist = 110 + ((i * 53 + ci * 29) % 120);
       pieces.push({
-        k: `${side}${i}`, side,
-        dx: Math.cos(spread) * dist * sx * 1.1,
-        dy: Math.sin(spread) * dist * 1.25,
-        rot: ((i * 83) % 360) - 120,
+        k: `${cn.id}${i}`, rainy: false, ox: cn.ox, oy: cn.oy,
+        dx: Math.cos(ang) * dist * cn.sx * 1.35,
+        dy: Math.sin(ang) * dist * cn.sy * 0.95,
+        rot: ((i * 97 + ci * 41) % 420) - 150,
         s: 5 + (i % 3) * 1.6,
-        c: colors[(i + (side === 'l' ? 0 : 2)) % colors.length],
-        d: 2.12 + (i % 4) * 0.025,
+        c: colors[(i + ci) % colors.length],
+        d: 2.1 + (i % 4) * 0.03 + ci * 0.02,
       });
     }
+  });
+  for (let i = 0; i < rain; i++) {
+    pieces.push({
+      k: `rain${i}`, rainy: true, ox: 4 + ((i * 61) % 92), oy: -2,
+      dx: ((i % 5) - 2) * 14, dy: 300 + ((i * 37) % 130),
+      rot: ((i * 71) % 540) - 200, s: 4.5 + (i % 3) * 1.4, c: colors[(i * 2 + 1) % colors.length], d: 2.25 + (i % 6) * 0.07,
+    });
   }
   return (
     <div className="pc-pops" aria-hidden>
-      <i className="pc-pop-ring l" /><i className="pc-pop-ring r" />
+      {corners.map((cn) => <i key={cn.id} className="pc-pop-ring" style={{ left: `${cn.ox}%`, top: `${cn.oy}%` }} />)}
       {pieces.map((q) => (
-        <i key={q.k} className={`pc-pop ${q.side}`} style={{ ['--dx' as string]: `${q.dx}px`, ['--dy' as string]: `${q.dy}px`, ['--rot' as string]: `${q.rot}deg`, ['--s' as string]: `${q.s}px`, ['--c' as string]: q.c, ['--d' as string]: `${q.d}s` }} />
+        <i key={q.k} className={`pc-pop ${q.rainy ? 'rain' : ''}`} style={{ ['--ox' as string]: `${q.ox}%`, ['--oy' as string]: `${q.oy}%`, ['--dx' as string]: `${q.dx}px`, ['--dy' as string]: `${q.dy}px`, ['--rot' as string]: `${q.rot}deg`, ['--s' as string]: `${q.s}px`, ['--c' as string]: q.c, ['--d' as string]: `${q.d}s` }} />
       ))}
     </div>
   );
@@ -140,19 +161,23 @@ function PaydayCardShow(p: PaydayCardProps & { onReplay: () => void }) {
               const idx = off + d;
               const cx = 24 + (idx % 7) * 33 + 16;
               const cy = 112 + Math.floor(idx / 7) * 15 + 7.5;
-              const k = cell(p.dayStatus[d]);
+              const kAm = cell(p.dayStatus[d]);
+              const kPm = p.pmStatus ? cell(p.pmStatus[d]) : null;
+              const both = [kAm, kPm].filter(Boolean) as string[];
+              const k = both.includes('one') ? 'one' : both.includes('both') ? 'both' : 'none';
+              const hole = (kk: string, hx: number, idx: number) => (kk === 'none' ? (
+                <circle key={idx} cx={hx} cy={cy + 0.4} r="3.1" className="pc-hole-empty" />
+              ) : (
+                <g key={idx}>
+                  <circle cx={hx} cy={cy + 0.4} r="7.5" className={`pc-ripple ${kk}`} />
+                  <circle cx={hx} cy={cy + 0.4} r="3.7" className="pc-hole" style={{ animationDelay: `${1.05 + d * 0.07 + idx * 0.12}s` }} />
+                </g>
+              ));
               return (
                 <g key={d} className={`pc-day ${k}`} style={{ ['--i' as string]: d }}>
                   <rect x={cx - 15.5} y={cy - 7} width="31" height="14" rx="3" className="pc-cellbox" />
                   <text x={cx - 12.5} y={cy - 1.2} className="pc-dn">{d + 1}</text>
-                  {k === 'none' ? (
-                    <circle cx={cx + 6} cy={cy + 0.4} r="3.4" className="pc-hole-empty" />
-                  ) : (
-                    <>
-                      <circle cx={cx + 6} cy={cy + 0.4} r="9" className="pc-ripple" />
-                      <circle cx={cx + 6} cy={cy + 0.4} r="4.4" className="pc-hole" />
-                    </>
-                  )}
+                  {kPm === null ? hole(kAm, cx + 6, 0) : <>{hole(kAm, cx + 1.2, 0)}{hole(kPm, cx + 10.2, 1)}</>}
                 </g>
               );
             })}
@@ -162,8 +187,9 @@ function PaydayCardShow(p: PaydayCardProps & { onReplay: () => void }) {
               <circle r={R} className="pc-ring-bg" />
               <circle r={R} className="pc-ring" strokeDasharray={C} strokeDashoffset={C * (1 - pct)} style={{ ['--c' as string]: C, ['--to' as string]: C * (1 - pct) }} transform="rotate(-90)" />
               {p.tone === 'ok' && Array.from({ length: 14 }, (_, i) => <circle key={i} r="2.4" className="pc-spark" style={{ ['--a' as string]: `${(i * 360) / 14}deg`, ['--d' as string]: `${1.5 + (i % 4) * 0.08}s` }} />)}
-              <text y="6" textAnchor="middle" className="pc-days">{Math.round(days)}</text>
+              <text y="6" textAnchor="middle" className="pc-days">{Number.isInteger(p.agreedDays) ? Math.round(days) : days.toFixed(1)}</text>
               <text y="24" textAnchor="middle" className="pc-of">of {nDays} days</text>
+              {p.split && <text y="58" textAnchor="middle" className="pc-split">{p.split.full} full · {p.split.half} half</text>}
             </g>
           </g>
         </g>

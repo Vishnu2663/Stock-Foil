@@ -7,6 +7,8 @@ interface Props {
   money: (minor: number) => string;
   /** the net amount, counting up */
   netShown: number;
+  /** half-day card: agreed full days and half days, counted separately */
+  split?: { full: number; half: number };
 }
 
 const fmtDays = (d: number) => (Number.isInteger(d) ? String(d) : d.toFixed(1));
@@ -16,7 +18,7 @@ const fmtDays = (d: number) => (Number.isInteger(d) ? String(d) : d.toFixed(1));
  * who says what: the agreed figures against each half read alone, with a bar for each and a gap
  * meter for whatever is in dispute.
  */
-export function PayBreakdown({ pay, rateMinor, advMinor, money, netShown }: Props) {
+export function PayBreakdown({ pay, rateMinor, advMinor, money, netShown, split }: Props) {
   const a = pay.agreed;
   const rc = a.rateChange;
   const nets = [a.netMinor, pay.workerView.netMinor, pay.employerView.netMinor].map((n) => Math.max(0, n));
@@ -37,6 +39,12 @@ export function PayBreakdown({ pay, rateMinor, advMinor, money, netShown }: Prop
             <div className="pb-step" style={step()}><small>Before day {rc.fromDay}</small><b>{fmtDays(rc.daysBefore)} × {money(rateMinor)}</b></div>
             <i className="pb-op" style={step()}>+</i>
             <div className="pb-step" style={step()}><small>From day {rc.fromDay}</small><b>{fmtDays(rc.daysAfter)} × {money(rc.rateMinor)}</b></div>
+          </>
+        ) : split ? (
+          <>
+            <div className="pb-step full" style={step()}><small>Full days</small><b>{split.full} × {money(rateMinor)}</b><em>both circles punched</em></div>
+            <i className="pb-op" style={step()}>+</i>
+            <div className="pb-step half" style={step()}><small>Half days</small><b>{split.half} × {money(Math.round(rateMinor / 2))}</b><em>one circle, half the wage</em></div>
           </>
         ) : (
           <>

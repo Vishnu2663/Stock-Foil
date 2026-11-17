@@ -34,6 +34,7 @@ import {
   FOIL_PAPER_BOTTOM,
   dayCells,
   advCells,
+  pmCells,
   type Cell,
 } from '../core/layout';
 import { makeWave, type Wave } from '../core/wave';
@@ -46,6 +47,8 @@ export interface HalfInstance {
   role: Role;
   /** punched day numbers (1-based) */
   days: number[];
+  /** punched second-half circles (day numbers), for cards with half-day circles */
+  pm?: number[];
   /** punched advance token numbers (1-10) */
   adv: number[];
   /** frame mm -> image px */
@@ -127,9 +130,11 @@ interface Prepared {
   wave: Wave;
   qr: ReturnType<typeof qrFor>;
   dayPunched: Set<number>;
+  pmPunched: Set<number>;
   advPunched: Set<number>;
   holeAt: Map<string, { x: number; y: number }>;
   dcells: Cell[];
+  pcells: Cell[];
   acells: Cell[];
 }
 
@@ -187,6 +192,10 @@ function shade(prep: Prepared, x: number, y: number): number | null {
       const hp = prep.holeAt.get(`${cell.kind === 'day' ? 'd' : 'a'}${cell.n}`)!;
       if (Math.hypot(x - hp.x, y - hp.y) <= HOLE_R) return null;
     }
+    if (cell.kind === 'day' && prep.pmPunched.has(cell.n)) {
+      const hp = prep.holeAt.get(`p${cell.n}`);
+      if (hp && Math.hypot(x - hp.x, y - hp.y) <= HOLE_R) return null;
+    }
     // grid lines
     const lx = Math.min(x - cell.x, cell.x + cell.w - x);
     const ly = Math.min(y - cell.y, cell.y + cell.h - y);
@@ -207,17 +216,19 @@ export function renderScene(halves: HalfInstance[], cond: PhotoConditions, w = I
     wave: inst.wave ?? makeWave(waveSeed(inst.spec)),
     qr: qrFor(encodePayload(inst.spec, inst.role)),
     dayPunched: new Set(inst.days.filter((d) => d >= 1 && d <= daysInMonth(inst.spec.year, inst.spec.month))),
+    pmPunched: new Set((inst.pm ?? []).filter((d) => d >= 1 && d <= daysInMonth(inst.spec.year, inst.spec.month))),
     advPunched: new Set(inst.adv),
     holeAt: new Map(),
-    dcells: dayCells(inst.spec.year, inst.spec.month),
+    dcells: dayCells(inst.spec.year, inst.spec.month, !!inst.spec.halves),
+    pcells: inst.spec.halves ? pmCells(inst.spec.year, inst.spec.month) : [],
     acells: advCells(),
   }));
   for (const p of preps) {
     const st = p.inst.stack ?? { dx: 0, dy: 0, rotDeg: 0 };
     const th = (st.rotDeg * Math.PI) / 180;
     const cs = Math.cos(th), sn = Math.sin(th);
-    for (const c of [...p.dcells, ...p.acells]) {
-      const key = `${c.kind === 'day' ? 'd' : 'a'}${c.n}`;
+    for (const c of [...p.dcells, ...p.pcells, ...p.acells]) {
+      const key = `${c.kind === 'day' ? 'd' : c.kind === 'pm' ? 'p' : 'a'}${c.n}`;
       const o = p.inst.holeOffset?.[key] ?? { dx: 0, dy: 0 };
       const rx = c.cx - FRAME_W / 2, ry = c.cy - 60;
       p.holeAt.set(key, { x: FRAME_W / 2 + cs * rx - sn * ry + st.dx + o.dx, y: 60 + sn * rx + cs * ry + st.dy + o.dy });

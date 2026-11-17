@@ -51,7 +51,7 @@ export function Members({ newCardFor }: { go: (r: string) => void; newCardFor: (
   const bulk = async () => {
     const receipts = loadReceipts();
     // every card made in bulk is cryptographically paired, like cards from the New card form
-    const specs = bulkSpecs(members, cards, year, month, (m) => carryFor(m, cards, receipts, year, month)).map((c) => ({ ...c, pairing: newPairing() }));
+    const specs = bulkSpecs(members, cards, year, month, (m) => carryFor(m, cards, receipts, year, month)).map((c) => ({ ...c, pairing: newPairing(), halves: true as const }));
     if (!specs.length) return toast('Everyone already has a card for this month');
     setBusy(true);
     saveCards(specs);

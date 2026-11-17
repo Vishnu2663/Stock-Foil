@@ -16,6 +16,8 @@ export interface HistoryReceipt {
   employer: string;
   verdict: string;
   agreedDays: number[];
+  /** half-day cards: agreed half-day circles */
+  halfUnits?: number;
   netMinor: number;
   disputedMinor: number;
   currency: string;
@@ -66,7 +68,7 @@ export function buildHistory(receipts: HistoryReceipt[]): HistoryRow[] {
       employer: base.employer,
       scanAt: base.at,
       verdict: scans[0] ? scans[0].verdict : st.state,
-      days: scans[0] ? scans[0].agreedDays.length : null,
+      days: scans[0] ? (scans[0].halfUnits !== undefined ? scans[0].halfUnits / 2 : scans[0].agreedDays.length) : null,
       netMinor: scans[0] ? scans[0].netMinor : st.amountMinor ?? 0,
       disputedMinor: scans[0] ? scans[0].disputedMinor : 0,
       currency: base.currency,

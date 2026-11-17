@@ -8,6 +8,7 @@ import { useCountUp } from '../fx';
 import { weekdayShort, monthName, t } from '../../i18n';
 import { addCrew, addReceipt, loadReceipts } from '../../store';
 import { paymentStatus, payable } from '../../core/settlement';
+import { splitDays } from '../../core/wages';
 import type { HalfScan, PhotoScan, CellReading } from '../../vision/detect';
 import type { RGBA } from '../../vision/image';
 import { verifyPair } from '../../vision/pair';
@@ -29,7 +30,7 @@ function applyEdits(h: HalfScan, edits: Edits): HalfScan {
     const e = edits[key(h.payload.role, c.kind, c.n)];
     return e === undefined ? c : { ...c, punched: e, manual: true, uncertain: false };
   };
-  return { ...h, days: h.days.map(fix), adv: h.adv.map(fix) };
+  return { ...h, days: h.days.map(fix), pm: h.pm.map(fix), adv: h.adv.map(fix) };
 }
 
 export function Results({ stock, foil, onReset }: { stock: Captured; foil: Captured; onReset: () => void }) {
@@ -56,8 +57,8 @@ export function Results({ stock, foil, onReset }: { stock: Captured; foil: Captu
   const { spec } = r;
 
   useEffect(() => {
-    if (cs.current) drawOverlay(cs.current, stock.photo, stock.scan, sH, r.cmp.dayStatus, r.cmp.advStatus);
-    if (cf.current) drawOverlay(cf.current, foil.photo, foil.scan, fH, r.cmp.dayStatus, r.cmp.advStatus);
+    if (cs.current) drawOverlay(cs.current, stock.photo, stock.scan, sH, r.cmp.dayStatus, r.cmp.advStatus, r.cmp.pmStatus);
+    if (cf.current) drawOverlay(cf.current, foil.photo, foil.scan, fH, r.cmp.dayStatus, r.cmp.advStatus, r.cmp.pmStatus);
   }, [stock, foil, sH, fH, r]);
 
   const unreliable = r.verdict === 'unreliable';
@@ -89,12 +90,19 @@ export function Results({ stock, foil, onReset }: { stock: Captured; foil: Captu
   const totalShown = useCountUp(r.pay.agreed.netMinor);
   const nDays = daysInMonth(spec.year, spec.month);
   const off = firstWeekday(spec.year, spec.month);
-  const sus = new Set(r.alignment.flagged.filter((f) => f.kind === 'day').map((f) => f.n));
-  const uncertain = new Set(r.uncertainCells.filter((u) => u.kind === 'day').map((u) => u.n));
+  const halves = !!spec.halves;
+  const flagSet = (k: 'day' | 'pm') => new Set(r.alignment.flagged.filter((f) => f.kind === k).map((f) => f.n));
+  const susAm = flagSet('day'), susPm = flagSet('pm');
+  const sus = new Set([...susAm, ...susPm]);
+  const uncSet = (k: 'day' | 'pm') => new Set(r.uncertainCells.filter((u) => u.kind === k).map((u) => u.n));
+  const uncAm = uncSet('day'), uncPm = uncSet('pm');
+  const uncertain = new Set([...uncAm, ...uncPm]);
+  const dayTypes = splitDays(r.cmp);
+  const fullSet = new Set(dayTypes.full), halfSet = new Set(dayTypes.half);
   const warnings = [...stock.half.warnings.map((w) => `Stock: ${w}`), ...foil.half.warnings.map((w) => `Foil: ${w}`)];
 
-  const cellVal = (h: HalfScan, kind: 'day' | 'adv', n: number) => (kind === 'day' ? h.days : h.adv).find((c) => c.n === n)?.punched ?? false;
-  const toggle = (role: 'S' | 'F', kind: 'day' | 'adv', n: number) => {
+  const cellVal = (h: HalfScan, kind: 'day' | 'pm' | 'adv', n: number) => (kind === 'day' ? h.days : kind === 'pm' ? h.pm : h.adv).find((c) => c.n === n)?.punched ?? false;
+  const toggle = (role: 'S' | 'F', kind: 'day' | 'pm' | 'adv', n: number) => {
     const cur = cellVal(role === 'S' ? sH : fH, kind, n);
     setEdits((e) => ({ ...e, [key(role, kind, n)]: !cur }));
     setSaved(false);
@@ -113,6 +121,7 @@ export function Results({ stock, foil, onReset }: { stock: Captured; foil: Captu
       employer: spec.employer,
       verdict: r.verdict,
       agreedDays: r.cmp.agreedDays,
+      ...(r.cmp.halves ? { halfUnits: r.cmp.agreedDays.length + r.cmp.agreedPm.length } : {}),
       stockOnlyDays: r.cmp.stockOnlyDays,
       foilOnlyDays: r.cmp.foilOnlyDays,
       agreedAdv: r.cmp.agreedAdv.length,
@@ -140,6 +149,8 @@ export function Results({ stock, foil, onReset }: { stock: Captured; foil: Captu
         stamp={r.verdict === 'genuine-consistent' ? 'VERIFIED' : r.verdict === 'genuine-disputed' ? 'IN DISPUTE' : r.verdict === 'pair-mismatch' ? 'REJECTED' : unreliable ? 'RETAKE' : 'CHECK'}
         title={title}
         dayStatus={r.cmp.dayStatus}
+        pmStatus={halves ? r.cmp.pmStatus : undefined}
+        split={halves ? { full: dayTypes.full.length, half: dayTypes.half.length } : undefined}
         advStatus={r.cmp.advStatus}
         agreedDays={r.pay.agreed.days}
         agreedAdv={r.pay.agreed.advances}
@@ -147,7 +158,7 @@ export function Results({ stock, foil, onReset }: { stock: Captured; foil: Captu
         disputedMinor={r.pay.disputedMinor}
         money={m}
         payState={status.paid ? 'paid' : status.pending ? 'unpaid' : 'none'}
-        formula={`${r.pay.agreed.days} days × ${m(spec.rateMinor)} − ${r.pay.agreed.advances} × ${m(spec.advMinor)}${carry !== 0 ? ` ${carry < 0 ? '−' : '+'} ${m(Math.abs(carry))} b/f` : ''}`}
+        formula={`${r.pay.agreed.rateChange ? `${r.pay.agreed.rateChange.daysBefore} × ${m(spec.rateMinor)} + ${r.pay.agreed.rateChange.daysAfter} × ${m(r.pay.agreed.rateChange.rateMinor)} (raise from day ${r.pay.agreed.rateChange.fromDay})` : `${r.pay.agreed.days} days × ${m(spec.rateMinor)}`} − ${r.pay.agreed.advances} × ${m(spec.advMinor)}${carry !== 0 ? ` ${carry < 0 ? '−' : '+'} ${m(Math.abs(carry))} b/f` : ''}`}
       />
       <div className={`verdict ${cls}`} role="status">
         <span className="big">{icon}</span>
@@ -189,7 +200,16 @@ export function Results({ stock, foil, onReset }: { stock: Captured; foil: Captu
 
         <div className="card">
           <h3>Days · tap a day to review or correct</h3>
-          <div className="cal">
+          {halves && (
+            <div className="daysum" role="status">
+              <div><b>{dayTypes.full.length}</b><span>full {dayTypes.full.length === 1 ? 'day' : 'days'}<small>both circles</small></span></div>
+              <i aria-hidden>+</i>
+              <div><b>{dayTypes.half.length}</b><span>half {dayTypes.half.length === 1 ? 'day' : 'days'}<small>one circle</small></span></div>
+              <i aria-hidden>=</i>
+              <div className="tot"><b>{Number.isInteger(r.pay.agreed.days) ? r.pay.agreed.days : r.pay.agreed.days.toFixed(1)}</b><span>days paid<small>agreed on both pieces</small></span></div>
+            </div>
+          )}
+          <div className={`cal ${halves ? 'halves' : ''}`}>
             {Array.from({ length: 7 }, (_, i) => (
               <div className="h" key={i}>{weekdayShort(lang, i)}</div>
             ))}
@@ -198,25 +218,47 @@ export function Results({ stock, foil, onReset }: { stock: Captured; foil: Captu
             ))}
             {Array.from({ length: nDays }, (_, i) => {
               const d = i + 1;
-              const st = r.cmp.dayStatus[i] ?? 'none';
+              const am = r.cmp.dayStatus[i] ?? 'none';
+              const pm = halves ? r.cmp.pmStatus[i] ?? 'none' : 'none';
+              const all = halves ? [am, pm] : [am];
+              // the tile takes the colour of its worst circle: one-sided beats agreed beats empty
+              const st = all.includes('stockOnly') ? 'stockOnly' : all.includes('foilOnly') ? 'foilOnly' : all.includes('both') ? 'both' : 'none';
+              const slot = (status: string, unsure: boolean, flagged: boolean, label: string) => (
+                <span className={`slot ${status} ${unsure ? 'unsure' : ''} ${flagged ? 'sus' : ''}`} title={label}>
+                  {status === 'stockOnly' ? 'W' : status === 'foilOnly' ? 'E' : ''}
+                </span>
+              );
               return (
-                <button key={d} style={{ ['--i' as string]: d }} className={`${st} ${uncertain.has(d) ? 'unsure' : ''} ${sus.has(d) ? 'sus' : ''} ${sel === d ? 'sel' : ''}`} onClick={() => setSel(sel === d ? null : d)} title={st}>
-                  {d}
-                  <small>{sus.has(d) ? '⚠' : st === 'both' ? '●●' : st === 'stockOnly' ? '●○' : st === 'foilOnly' ? '○●' : ''}</small>
+                <button key={d} style={{ ['--i' as string]: d }} className={`${st} ${uncertain.has(d) ? 'unsure' : ''} ${sus.has(d) ? 'sus' : ''} ${sel === d ? 'sel' : ''}`} onClick={() => setSel(sel === d ? null : d)} aria-label={`Day ${d}`}>
+                  <span className="dnum">{d}{halves && fullSet.has(d) && <em className="dt full">FULL</em>}{halves && halfSet.has(d) && <em className="dt half">½</em>}</span>
+                  <span className="slots">
+                    {slot(am, uncAm.has(d), susAm.has(d), halves ? 'First half of the day' : 'The day')}
+                    {halves && slot(pm, uncPm.has(d), susPm.has(d), 'Second half of the day')}
+                  </span>
                 </button>
               );
             })}
           </div>
-          <div className="small muted sans" style={{ marginTop: 8 }}>
-            ●● both halves · ●○ worker only · ○● employer only · dashed = unsure · ⚠ hole looks separately made
+          <div className="legend sans" aria-label="How to read the calendar">
+            <div className="legend-item"><span className="slot both" /><span><b>Both halves</b>Punched on the worker's AND the employer's piece. Counted.</span></div>
+            <div className="legend-item"><span className="slot stockOnly">W</span><span><b>Worker's piece only</b>Not on the employer's piece. Disputed, not paid.</span></div>
+            <div className="legend-item"><span className="slot foilOnly">E</span><span><b>Employer's piece only</b>Not on the worker's piece. Disputed, not paid.</span></div>
+            <div className="legend-item"><span className="slot none unsure" /><span><b>Unsure</b>Hard to read. Tap the day and check by eye.</span></div>
+            <div className="legend-item"><span className="slot both sus" /><span><b>Looks separately made</b>The holes did not line up when stacked.</span></div>
+            {halves && <div className="legend-item wide"><span className="slot-pair"><span className="slot none" /><span className="slot none" /></span><span><b>Two circles a day</b>Left = first half of the day, right = second half. One circle is half a day's wage.</span></div>}
           </div>
           {sel && (
             <div className="card flat sans" style={{ marginTop: 10 }}>
               <b>Day {sel}</b> <span className="pill">{selStatus}</span>
-              <div className="row" style={{ marginTop: 8 }}>
-                <button className="sm" onClick={() => toggle('S', 'day', sel)}>Worker half: {cellVal(sH, 'day', sel) ? 'punched' : 'not punched'} ⇄</button>
-                <button className="sm" onClick={() => toggle('F', 'day', sel)}>Employer half: {cellVal(fH, 'day', sel) ? 'punched' : 'not punched'} ⇄</button>
-              </div>
+              {(halves ? (['day', 'pm'] as const) : (['day'] as const)).map((k) => (
+                <div key={k} style={{ marginTop: 8 }}>
+                  {halves && <div className="small" style={{ fontWeight: 700, marginBottom: 4 }}>{k === 'day' ? 'First half of the day' : 'Second half of the day'}</div>}
+                  <div className="row">
+                    <button className="sm" onClick={() => toggle('S', k, sel)}>Worker piece: {cellVal(sH, k, sel) ? 'punched' : 'not punched'} ⇄</button>
+                    <button className="sm" onClick={() => toggle('F', k, sel)}>Employer piece: {cellVal(fH, k, sel) ? 'punched' : 'not punched'} ⇄</button>
+                  </div>
+                </div>
+              ))}
               <div className="small muted" style={{ marginTop: 6 }}>Correct only what the camera got wrong. Fixes are marked as manual.</div>
             </div>
           )}
@@ -226,28 +268,36 @@ export function Results({ stock, foil, onReset }: { stock: Captured; foil: Captu
       <div className="card" style={{ marginTop: 16 }}>
         <h3>Pay</h3>
         {unreliable && <p className="small sans" style={{ color: 'var(--bad)' }}>⛔ Do not pay from this scan. The photos were not read reliably, so the numbers below may be wrong. Retake both photos with the whole half in view.</p>}
-        <details className="no-print" style={{ margin: '4px 0 12px' }} open={wc.on}>
-          <summary style={{ cursor: 'pointer' }}>💼 Wage changed this month? {wc.on && <span className="pill warn">override on</span>}</summary>
-          <div className="card flat sans" style={{ marginTop: 8 }}>
-            <label className="row" style={{ gap: 8, fontSize: '0.92rem', color: 'var(--ink)', margin: 0 }}>
-              <input type="checkbox" checked={wc.on} onChange={(e) => setWc({ ...wc, on: e.target.checked })} /> Apply a new daily wage from a given day
-            </label>
-            {wc.on && (
-              <>
-                <div className="row" style={{ alignItems: 'flex-start', marginTop: 8 }}>
-                  <AmountInput label="New daily wage" value={wc.rate} onChange={(v) => setWc({ ...wc, rate: v })} max={MAX_AMOUNT_MAJOR} />
-                  <div className="field" style={{ flex: 1 }}>
-                    <label>Applies from day</label>
-                    <input type="number" min={1} max={nDays} value={wc.from} onChange={(e) => setWc({ ...wc, from: Math.min(nDays, Math.max(1, Number(e.target.value) || 1)) })} />
-                    <div className="small muted">Days before it are paid at the printed {m(spec.rateMinor)}.</div>
-                  </div>
+        <div className={`wagebox no-print ${wc.on ? 'on' : ''}`}>
+          <label className="wagebox-head">
+            <input type="checkbox" checked={wc.on} onChange={(e) => setWc({ ...wc, on: e.target.checked })} />
+            <i aria-hidden />
+            <span className="wagebox-txt">
+              <b>Did the wage change this month?</b>
+              <small>{wc.on ? `Paying ${m(Math.round(wc.rate * 100))} a day from day ${wc.from}; earlier days stay at the printed ${m(spec.rateMinor)}.` : 'Switch on to pay a different daily wage from a chosen day (a raise, say).'}</small>
+            </span>
+            <em className="wagebox-state">{wc.on ? 'ON' : 'OFF'}</em>
+          </label>
+          {wc.on && (
+            <div className="wagebox-body sans">
+              <div className="row" style={{ alignItems: 'flex-start' }}>
+                <AmountInput label="New daily wage" value={wc.rate} onChange={(v) => setWc({ ...wc, rate: v })} max={MAX_AMOUNT_MAJOR} />
+                <div className="field" style={{ flex: 1 }}>
+                  <label>Applies from day</label>
+                  <input type="number" min={1} max={nDays} value={wc.from} onChange={(e) => setWc({ ...wc, from: Math.min(nDays, Math.max(1, Number(e.target.value) || 1)) })} />
+                  <div className="small sans" style={{ color: 'var(--ink-2)', minHeight: '1.2em' }}>Days before it are paid at {m(spec.rateMinor)}.</div>
                 </div>
-                <div className="small" style={{ color: 'var(--amber)' }}>⚠ Both sides must agree. The printed card says {m(spec.rateMinor)} a day; this overrides it from day {wc.from}. It is shown on the slip and recorded in the ledger when you save or mark paid.</div>
-              </>
-            )}
+              </div>
+              <div className="small" style={{ color: 'var(--amber)' }}>⚠ Both sides must agree. It is shown on the slip and recorded in the ledger.</div>
+            </div>
+          )}
+        </div>
+        {r.pay.agreed.rateChange && (
+          <div className="wage-badge" role="status">
+            <b>Wage changed</b> · {r.pay.agreed.rateChange.daysBefore} days at {m(spec.rateMinor)} <i aria-hidden>→</i> {r.pay.agreed.rateChange.daysAfter} days at {m(r.pay.agreed.rateChange.rateMinor)} <span>from day {r.pay.agreed.rateChange.fromDay}</span>
           </div>
-        </details>
-        <PayBreakdown pay={r.pay} rateMinor={spec.rateMinor} advMinor={spec.advMinor} money={m} netShown={totalShown} />
+        )}
+        <PayBreakdown pay={r.pay} rateMinor={spec.rateMinor} advMinor={spec.advMinor} money={m} netShown={totalShown} split={halves ? { full: dayTypes.full.length, half: dayTypes.half.length } : undefined} />
         {status.paid && (
           <div className="card flat sans" style={{ marginTop: 10, borderColor: status.changed ? 'var(--bad)' : 'var(--green)' }}>
             <b>💰 Already paid</b> on {new Date(status.at!).toLocaleDateString(lang)}: {m(status.amountMinor!)}.

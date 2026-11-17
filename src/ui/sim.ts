@@ -10,6 +10,9 @@ export interface SimInput {
   foilDays: number[];
   stockAdv?: number[];
   foilAdv?: number[];
+  /** second-half circles punched (cards with half-day circles) */
+  stockPm?: number[];
+  foilPm?: number[];
   /** spec used to print the foil (to simulate a foreign or altered half) */
   foilSpec?: CardSpec;
   foilWave?: Wave;
@@ -20,8 +23,8 @@ export interface SimInput {
 export function simulate(i: SimInput): { stock: Captured; foil: Captured } | { error: string } {
   const cs = { ...CLEAN, scale: 4.2, ...i.condS };
   const cf = { ...CLEAN, scale: 4.2, seed: 5, ...i.condF };
-  const photoS = renderScene([{ spec: i.spec, role: 'S', days: i.stockDays, adv: i.stockAdv ?? [], H: placeHalf(cs, 'S') }], cs);
-  const photoF = renderScene([{ spec: i.foilSpec ?? i.spec, role: 'F', days: i.foilDays, adv: i.foilAdv ?? [], H: placeHalf(cf, 'F'), wave: i.foilWave }], cf);
+  const photoS = renderScene([{ spec: i.spec, role: 'S', days: i.stockDays, pm: i.stockPm, adv: i.stockAdv ?? [], H: placeHalf(cs, 'S') }], cs);
+  const photoF = renderScene([{ spec: i.foilSpec ?? i.spec, role: 'F', days: i.foilDays, pm: i.foilPm, adv: i.foilAdv ?? [], H: placeHalf(cf, 'F'), wave: i.foilWave }], cf);
   const ss = scanPhoto(photoS);
   const sf = scanPhoto(photoF);
   if (!ss.halves[0] || !sf.halves[0]) return { error: 'Could not read one of the simulated photos. Try less blur or rotation.' };

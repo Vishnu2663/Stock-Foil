@@ -5,10 +5,14 @@ import { defer, simulate } from '../sim';
 
 const spec = newCardSpec({ id: 'DEMO2026', year: 2026, month: 11, rateMinor: 60000, advMinor: 20000, worker: 'Ramesh', employer: 'Sharma Builders', lang: 'en' });
 const FIVE = [3, 4, 5, 6, 9];
+// a card with two circles per date: days 3-6 are full days, days 9 and 12 only the morning (half days)
+const halfSpec = newCardSpec({ id: 'DEMOHALF', year: 2026, month: 11, rateMinor: 60000, advMinor: 20000, worker: 'Ramesh', employer: 'Sharma Builders', lang: 'en', halves: true });
+const AM = [3, 4, 5, 6, 9, 12];
+const PM = [3, 4, 5, 6];
 const camS = { angle: 0.12, noise: 0.01, gradient: 0.25, gradDir: 1.1, tx: -10 };
 const camF = { angle: -0.2, noise: 0.015, gradient: 0.2, gradDir: 3.5, shadow: 0.1, blur: 0.6, px: 0.0003 };
 
-type Step = 0 | 1 | 2;
+type Step = 0 | 1 | 2 | 3;
 export function Demo() {
   const [step, setStep] = useState<Step>(0);
   const [pair, setPair] = useState<{ stock: Captured; foil: Captured } | null>(null);
@@ -19,7 +23,9 @@ export function Demo() {
     setBusy(true);
     setErr('');
     const r = await defer(() =>
-      s === 1
+      s === 3
+        ? simulate({ spec: halfSpec, stockDays: AM, foilDays: AM, stockPm: PM, foilPm: PM, stockAdv: [1], foilAdv: [1], condS: camS, condF: camF })
+        : s === 1
         ? simulate({ spec, stockDays: FIVE, foilDays: FIVE, stockAdv: [1], foilAdv: [1], condS: camS, condF: camF })
         : simulate({ spec, stockDays: [...FIVE, 11], foilDays: FIVE, stockAdv: [1], foilAdv: [1], condS: camS, condF: camF }),
     );
@@ -42,6 +48,7 @@ export function Demo() {
           <button className={step === 0 ? 'primary' : ''} onClick={() => { setStep(0); setPair(null); }}>1 · The claim</button>
           <button className={step === 1 ? 'primary' : ''} disabled={busy} onClick={() => run(1)}>2 · Worker brings his half</button>
           <button className={step === 2 ? 'primary' : ''} disabled={busy} onClick={() => run(2)}>3 · A sneaky extra hole</button>
+          <button className={step === 3 ? 'primary' : ''} disabled={busy} onClick={() => run(3)}>4 · A half day</button>
           {busy && <span className="spin" />}
         </div>
         {step === 0 && (
@@ -53,6 +60,7 @@ export function Demo() {
         )}
         {step === 1 && <p style={{ marginTop: 12 }}>Both halves are lined up by the cut: <b>5 holes match on both</b>. Pay = 5 × ₹600 − 1 advance (₹200) = ₹2,800. The contractor’s 4 days can’t stand.</p>}
         {step === 2 && <p style={{ marginTop: 12 }}>Someone punches day 11 into the worker’s half to claim a 6th day. The other half never got that hole, so the scan <b>catches it instantly</b> and pays only what both halves agree on.</p>}
+        {step === 3 && <p style={{ marginTop: 12 }}>This card has <b>two circles per date</b>. Ramesh worked full days on 3 to 6, but on day 9 and day 12 only the morning, so only the left circle is punched. Both halves agree: <b>10 circles = 5 days</b>, each circle worth half a day. Pay = 5 × ₹600 − 1 advance (₹200) = ₹2,800.</p>}
         {err && <p style={{ color: 'var(--bad)' }}>{err}</p>}
       </div>
 

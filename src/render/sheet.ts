@@ -7,7 +7,7 @@ import QRCode from 'qrcode';
 import { cardCode, daysInMonth, encodePayload, formatMoney, waveSeed, type CardSpec, type Role } from '../core/card';
 import {
   ADV_X, ADV_Y, CELL_W, CUT_Y, FIDUCIAL, FID_INSET, FOIL_OFFSET, FRAME_H, FRAME_W, GRID_COLS, GRID_X, GRID_Y,
-  HOLE_R, QR_SIZE, QR_X, QR_Y, SHEET_H, SHEET_W, STOCK_OFFSET, advCells, dayCells, GRID_ROWS,
+  HOLE_R, QR_SIZE, QR_X, QR_Y, SHEET_H, SHEET_W, STOCK_OFFSET, advCells, dayCells, pmCells, GRID_ROWS,
 } from '../core/layout';
 import { makeWave, wavePath } from '../core/wave';
 import { t, weekdayShort, monthName } from '../i18n';
@@ -75,11 +75,19 @@ function half(spec: CardSpec, role: Role, lang: string): string {
     parts.push(`<text x="${GRID_X + c * CELL_W + CELL_W / 2}" y="${GRID_Y - 2.2}" font-size="2.7" font-weight="600" text-anchor="middle" fill="${c >= 5 ? '#9a4a3a' : soft}">${esc(weekdayShort(lang, c))}</text>`);
   }
   // ---- day cells (weekend columns lightly tinted)
-  for (const c of dayCells(spec.year, spec.month)) {
+  const halves = !!spec.halves;
+  for (const c of dayCells(spec.year, spec.month, halves)) {
     const weekend = Math.round((c.x - GRID_X) / CELL_W) >= 5;
     parts.push(`<rect x="${c.x}" y="${c.y}" width="${c.w}" height="${c.h}" fill="${weekend ? '#f6f2e8' : 'none'}" stroke="${line}" stroke-width="0.25"/>`);
     parts.push(`<text x="${c.x + 1.1}" y="${c.y + 3.3}" font-size="3" font-weight="700" fill="${ink}">${c.n}</text>`);
     parts.push(`<circle cx="${c.cx}" cy="${c.cy}" r="${HOLE_R}" fill="none" stroke="#a39d90" stroke-width="0.15" stroke-dasharray="0.7 0.7"/>`);
+    // half-day cards: a faint divider between the first-half and second-half circles
+    if (halves) parts.push(`<line x1="${c.x + c.w / 2}" y1="${c.y + 4.2}" x2="${c.x + c.w / 2}" y2="${c.y + c.h - 0.9}" stroke="#c9c3b6" stroke-width="0.2" stroke-dasharray="0.6 0.8"/>`);
+  }
+  if (halves) {
+    for (const c of pmCells(spec.year, spec.month)) {
+      parts.push(`<circle cx="${c.cx}" cy="${c.cy}" r="${HOLE_R}" fill="none" stroke="#a39d90" stroke-width="0.15" stroke-dasharray="0.7 0.7"/>`);
+    }
   }
   void daysInMonth;
   void GRID_ROWS;
@@ -108,6 +116,10 @@ function half(spec: CardSpec, role: Role, lang: string): string {
 
   // ---- footer
   parts.push(`<text x="14" y="${FRAME_H - 3.5}" font-size="2.6" fill="${soft}">${esc(stock ? t(lang, 'keepStock') : t(lang, 'keepFoil'))}</text>`);
+  if (spec.halves) {
+    const ht = t(lang, 'halfLegend');
+    parts.push(`<text x="${spec.carryMinor ? 78 : FRAME_W - 14}" y="${FRAME_H - 3.5}" font-size="${fit(ht, 62, 2.6)}" font-weight="600" text-anchor="${spec.carryMinor ? 'middle' : 'end'}" fill="${soft}">${esc(ht)}</text>`);
+  }
   if (spec.carryMinor) {
     const ct = t(lang, 'carryRow', { v: formatMoney(spec.carryMinor, spec.currency, lang) });
     parts.push(`<text x="${FRAME_W - 14}" y="${FRAME_H - 3.5}" font-size="${fit(ct, 70, 3)}" font-weight="700" text-anchor="end" fill="${ink}">${esc(ct)}</text>`);

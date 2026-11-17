@@ -20,7 +20,7 @@ function HalfPreview({ c }: { c: Captured }) {
   const role = h.payload.role === 'S' ? 'Worker half' : 'Employer half';
   return (
     <div>
-      <canvas className="photo" ref={(el) => { if (el) drawOverlay(el, c.photo, c.scan, h, h.days.map(st), h.adv.map(st)); }} />
+      <canvas className="photo" ref={(el) => { if (el) drawOverlay(el, c.photo, c.scan, h, h.days.map(st), h.adv.map(st), h.pm.map(st)); }} />
       <p className="sans" style={{ margin: '8px 0 2px' }}>
         <b>✓ {role} detected</b> · card {h.payload.spec.id}
       </p>

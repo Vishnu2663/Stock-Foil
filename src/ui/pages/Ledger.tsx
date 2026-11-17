@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { formatMoney, type CardSpec } from '../../core/card';
-import { clearAll, deleteCard, loadCards, loadReceipts, verifyChain, type Receipt } from '../../store';
+import { clearAll, deleteCard, loadCards, loadReceipts, receiptDays, verifyChain, type Receipt } from '../../store';
 import { useApp } from '../ctx';
 import { download } from '../imageIO';
 import { sheetPdf } from '../../render/pdf';
@@ -59,7 +59,7 @@ export function Ledger({ go, reprint, edit }: { go: (r: string) => void; reprint
                   <td>{r.seq}</td>
                   <td>{r.month}</td>
                   <td>{r.worker || '—'}</td>
-                  <td>{r.agreedDays.length}{r.stockOnlyDays.length + r.foilOnlyDays.length ? ` (+${r.stockOnlyDays.length + r.foilOnlyDays.length}?)` : ''}</td>
+                  <td>{receiptDays(r)}{r.stockOnlyDays.length + r.foilOnlyDays.length ? ` (+${r.stockOnlyDays.length + r.foilOnlyDays.length}?)` : ''}</td>
                   <td>{r.verdict === 'paid' ? '💰 paid' : r.verdict === 'unpaid' ? '⏳ yet to pay' : r.verdict.replace('genuine-', '')}</td>
                   <td>{formatMoney(r.netMinor, r.currency)}</td>
                   <td>{r.disputedMinor ? formatMoney(r.disputedMinor, r.currency) : '—'}</td>
