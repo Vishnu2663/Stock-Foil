@@ -129,6 +129,10 @@ export function Results({ stock, foil, onReset }: { stock: Captured; foil: Captu
 
   return (
     <div>
+      <div className="scan-again no-print">
+        <span className="small sans">Done with this card?</span>
+        <button className="primary" onClick={onReset}>📷 Scan another card</button>
+      </div>
       <PaydayCard
         spec={spec}
         lang={lang}

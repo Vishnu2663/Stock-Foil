@@ -863,3 +863,9 @@ table.hist td.empty { text-align: center; padding: 28px 12px; color: var(--ink-2
 .dd-txt small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .dd-txt { flex: 1; }
 @media (max-width: 1000px) { .dd:not(.wide) .dd-menu { width: auto; } .dd-txt small { white-space: normal; } }
+
+/* "Scan another" lives right under the header on a result, so it is never hunted for */
+.scan-again { position: sticky; top: 64px; z-index: 6; display: flex; align-items: center; justify-content: flex-end; gap: 12px; margin: 0 0 10px; padding: 8px 10px; border-radius: 14px; background: color-mix(in srgb, var(--card) 88%, transparent); border: 1px solid var(--line); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+.scan-again .small { color: var(--ink-2); margin-right: auto; }
+.scan-again button { padding: 9px 18px; }
+@media (max-width: 520px) { .scan-again { top: 58px; } .scan-again .small { display: none; } .scan-again button { flex: 1; } }
