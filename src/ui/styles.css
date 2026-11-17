@@ -1064,3 +1064,37 @@ body.is-scrolling .ambient i, body.is-scrolling .pc-aura, body.is-scrolling .ton
 button .btn-ico { vertical-align: -4px; margin-right: 6px; flex: none; }
 .sc-tips i { display: inline-grid; place-items: center; width: 34px; height: 34px; border-radius: 10px; margin-bottom: 4px; color: #ffb27a; background: color-mix(in srgb, #ff8a3d 14%, transparent); }
 .sc-tips i .btn-ico { margin: 0; vertical-align: 0; width: 20px; height: 20px; }
+
+/* ---- header nav: polish. Quiet, fast, and nothing here rotates the text. ---- */
+@media (min-width: 1001px) {
+  /* the highlight and the accent line glide with a tiny overshoot, like a physical slider */
+  .nav-pill { transition: transform .5s cubic-bezier(.34, 1.45, .5, 1), width .5s cubic-bezier(.34, 1.45, .5, 1), height .2s, opacity .2s; }
+  .nav-pill::after { background: linear-gradient(90deg, var(--red), #ffb27a 50%, var(--red)); background-size: 220% 100%; animation: navLine 4s linear infinite; }
+  .nav-pill[data-tone='accent']::after { background: linear-gradient(90deg, #ff8a3d, #ffe0b0 50%, #ff8a3d); background-size: 220% 100%; }
+  @keyframes navLine { to { background-position: -220% 0; } }
+  /* a soft sweep of light crosses the label when the pointer arrives */
+  .top nav > a, .top .dd-btn { --c: var(--ink-2); }
+  .top nav > a:hover, .top .dd-btn:hover, .top .dd.open .dd-btn, .top nav > a.on, .top .dd-btn.on { --c: var(--ink); }
+  .top nav > a.accent { --c: #e0832f; }
+  .top nav > a.accent:hover, .top nav > a.accent.on { --c: #ffa65a; }
+  .nav-lbl { background: linear-gradient(100deg, var(--c) 42%, #fff6e6 50%, var(--c) 58%) 100% 0 / 250% 100% no-repeat; -webkit-background-clip: text; background-clip: text; color: transparent; transition: background-position .7s ease; }
+  .top nav > a:hover .nav-lbl, .top .dd-btn:hover .nav-lbl { background-position: 0 0; }
+  .nav-lbl .caret { -webkit-text-fill-color: var(--c); }
+  /* tiny lift on hover, press feedback on click */
+  .top nav > a, .top .dd-btn { transition: color .18s, transform .18s cubic-bezier(.3, 1.4, .5, 1); }
+  .top nav > a:hover, .top .dd-btn:hover { transform: translateY(-1px); }
+  .top nav > a:active, .top .dd-btn:active { transform: translateY(0) scale(.96); }
+  /* on first load the items rise in one after another */
+  .top nav > * { animation: navRise .55s cubic-bezier(.2, .9, .3, 1) both; }
+  .top nav > *:nth-child(2) { animation-delay: .05s; } .top nav > *:nth-child(3) { animation-delay: .1s; } .top nav > *:nth-child(4) { animation-delay: .15s; }
+  .top nav > *:nth-child(5) { animation-delay: .2s; } .top nav > *:nth-child(6) { animation-delay: .25s; } .top nav > *:nth-child(7) { animation-delay: .3s; }
+  .top nav > *:nth-child(8) { animation-delay: .35s; } .top nav > *:nth-child(9) { animation-delay: .4s; }
+  .top nav > .nav-pill { animation: none; }
+  @keyframes navRise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+  /* settings button: the gear turns, the border warms */
+  .settings-top { transition: border-color .2s, color .2s, background .2s, transform .18s cubic-bezier(.3, 1.4, .5, 1); }
+  .settings-top:hover { transform: translateY(-1px); }
+  .settings-top:active { transform: scale(.96); }
+}
+body.is-scrolling .nav-pill::after { animation-play-state: paused; }
+@media (prefers-reduced-motion: reduce) { .top nav > * , .nav-pill::after { animation: none !important; } .nav-lbl { transition: none; } }
