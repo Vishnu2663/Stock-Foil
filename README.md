@@ -4,6 +4,8 @@
 
 > In 1834 England burned its obsolete tally sticks in the House of Lords' furnaces. The fire got out of control and destroyed the Houses of Parliament. The tally sticks that burned Parliament have come back from the dead.
 
+**Live demo: https://vishnu2663.github.io/Stock-Foil/** (installable, works offline; the camera needs this https address)
+
 ## How it works
 
 1. **Print and cut.** The app prints an A4 sheet with a calendar card in two halves, separated by a wavy cut line unique to that card. Cut along the wave with scissors. The worker keeps the **stock**, the employer keeps the **foil**.
