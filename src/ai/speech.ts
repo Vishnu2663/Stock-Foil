@@ -60,19 +60,38 @@ export function voicesFor(tag: string): SpeechSynthesisVoice[] {
     .sort((a, c) => score(c, tag) - score(a, tag));
 }
 
-export type VoiceStatus = { kind: 'native' | 'fallback' | 'none'; voice?: SpeechSynthesisVoice; via?: string };
+export type VoiceStatus = { kind: 'native' | 'fallback' | 'none'; voice?: SpeechSynthesisVoice; via?: string; /** every candidate voice was found to be silent */ broken?: boolean };
+
+/**
+ * Some systems list a voice that was never downloaded: it "speaks" without a sound (or says only the
+ * digits). A voice that finishes far too fast for its text, twice, is marked broken and skipped.
+ */
+const broken = new Set<string>();
+const strikes = new Map<string, number>();
+const healthCbs = new Set<() => void>();
+export function subscribeVoiceHealth(cb: () => void): () => void { healthCbs.add(cb); return () => { healthCbs.delete(cb); }; }
+export const isVoiceBroken = (v: SpeechSynthesisVoice) => broken.has(v.voiceURI);
+function judge(v: SpeechSynthesisVoice, text: string, rate: number, ms: number) {
+  const letters = text.replace(/[\d\s\p{P}\p{S}]/gu, '').length;
+  if (letters < 14) return;
+  const fast = ms < (letters * 28) / Math.max(0.5, rate); // far quicker than any real speech
+  const n = (strikes.get(v.voiceURI) ?? 0) + (fast ? 1 : 0); // a real voice is never this quick, so no reset on a slow one
+  strikes.set(v.voiceURI, n);
+  if (n >= 2 && !broken.has(v.voiceURI)) { broken.add(v.voiceURI); healthCbs.forEach((f) => f()); }
+}
 
 /** What will actually speak this language on this device. */
 export function voiceStatus(tag: string, voiceURI?: string): VoiceStatus {
   if (!speechSupported()) return { kind: 'none' };
-  const own = voicesFor(tag);
+  const all = voicesFor(tag);
+  const own = all.filter((v) => !broken.has(v.voiceURI));
   if (own.length) return { kind: 'native', voice: own.find((v) => v.voiceURI === voiceURI) ?? own[0] };
   const fb = FALLBACK[base(tag)];
   if (fb) {
-    const rel = voicesFor(fb);
+    const rel = voicesFor(fb).filter((v) => !broken.has(v.voiceURI));
     if (rel.length) return { kind: 'fallback', voice: rel[0], via: fb };
   }
-  return { kind: 'none' };
+  return { kind: 'none', broken: all.length > 0 };
 }
 
 /** Does this device have a voice that can read the language (own or a close relative's)? */
@@ -130,6 +149,8 @@ function next(my: number) {
   if (st.voice) { u.voice = st.voice; u.lang = st.voice.lang; }
   live.add(u);
   let done = false;
+  let startedAt = 0;
+  u.onstart = () => { startedAt = performance.now(); };
   // each utterance moves the story on exactly once, whether it ends, errors or hangs
   const finish = () => {
     if (done) return;
@@ -140,7 +161,7 @@ function next(my: number) {
   };
   // if the engine hangs (some online voices never report the end), move on after a sensible time
   const watchdog = setTimeout(() => { if (my === gen) { speechSynthesis.cancel(); } finish(); }, 4000 + (c.text.length * 140) / Math.max(0.5, c.rate));
-  u.onend = finish;
+  u.onend = () => { if (u.voice && startedAt) judge(u.voice, c.text, c.rate, performance.now() - startedAt); finish(); };
   u.onerror = (e) => { if (e.error === 'canceled' || e.error === 'interrupted') { done = true; clearTimeout(watchdog); live.delete(u); } else finish(); };
   speechSynthesis.speak(u);
 }

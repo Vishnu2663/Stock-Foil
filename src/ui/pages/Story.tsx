@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { hasVoiceFor, speak, speechSupported, stopSpeaking, voiceQuality, voiceStatus, voicesFor } from '../../ai/speech';
+import { hasVoiceFor, speak, speechSupported, stopSpeaking, subscribeVoiceHealth, voiceQuality, voiceStatus, voicesFor } from '../../ai/speech';
 import { newCardSpec } from '../../core/card';
 import { newPairing } from '../../core/pairing';
 import { formatVerdict, STORY_LANGS, storyPack, type VerdictKind } from '../../i18n/story';
@@ -211,6 +211,8 @@ export function Story({ go }: { go: (r: string) => void }) {
     return STORY_LANGS.some((p) => p.code === settings.lang) ? settings.lang : 'en';
   });
   const [voicesReady, setVoicesReady] = useState(0);
+  const [, setHealthTick] = useState(0);
+  useEffect(() => subscribeVoiceHealth(() => setHealthTick((n) => n + 1)), []);
   const [textDone, setTextDone] = useState(false);
   const [verdictDone, setVerdictDone] = useState(false);
   const [voiceURI, setVoiceURIState] = useState<string>('');
@@ -283,15 +285,15 @@ export function Story({ go }: { go: (r: string) => void }) {
     stopSpeaking();
     setTextDone(false);
     setVerdictDone(false);
-    if (voice) speak(`${sc.title}.\n${sc.text}`, lang, pace, { tag: pack.speech, voiceURI: voiceURI || undefined, onEnd: () => setTextDone(true) });
+    if (voice && voiceOk) speak(`${sc.title}.\n${sc.text}`, lang, pace, { tag: pack.speech, voiceURI: voiceURI || undefined, onEnd: () => setTextDone(true) });
     return () => stopSpeaking();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [i, voice, lang, voiceURI, pace]);
+  }, [i, voice, lang, voiceURI, pace, voiceOk]);
   // the scanner's verdict is read out after the chapter text
   useEffect(() => {
-    if (voice && verdictText) speak(verdictText, lang, pace, { tag: pack.speech, voiceURI: voiceURI || undefined, queue: true, onEnd: () => setVerdictDone(true) });
+    if (voice && voiceOk && verdictText) speak(verdictText, lang, pace, { tag: pack.speech, voiceURI: voiceURI || undefined, queue: true, onEnd: () => setVerdictDone(true) });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [verdict, voice, lang, voiceURI, pace]);
+  }, [verdict, voice, lang, voiceURI, pace, voiceOk]);
 
   // autoplay
   useEffect(() => {
@@ -382,7 +384,17 @@ export function Story({ go }: { go: (r: string) => void }) {
           </label>
         </div>
       </div>
-      {voice && !voiceOk && <p className="small sans" style={{ color: '#ffb37a', margin: '8px 0 0' }}>This device has no {pack.name} voice installed, so the story is shown but not spoken. Pick another language, or add a {pack.name} voice in your system’s speech settings (on a phone: Settings → Accessibility → Spoken content / Text-to-speech). Chrome and Edge usually offer more voices than Firefox.</p>}
+      {voice && !voiceOk && !('broken' in vStatus && vStatus.broken) && <p className="small sans" style={{ color: '#ffb37a', margin: '8px 0 0' }}>This device has no {pack.name} voice installed, so the story is shown but not spoken. Pick another language, or add a {pack.name} voice in your system’s speech settings (on a phone: Settings → Accessibility → Spoken content / Text-to-speech). Chrome and Edge usually offer more voices than Firefox.</p>}
+      {voice && vStatus.kind === 'none' && 'broken' in vStatus && vStatus.broken && (
+        <div className="voice-tip sans" style={{ borderColor: 'rgba(255,106,85,.5)', background: 'rgba(255,106,85,.1)' }}>
+          <b>🔇 The {pack.name} voice on this device is listed but is not producing speech.</b> That usually means the voice was never downloaded, so it only says the numbers and skips the words.
+          <ul>
+            <li><b>Mac / iPhone:</b> Settings → Accessibility → Spoken Content → System Voice → Manage Voices → {pack.name} → download a voice (the <b>Enhanced</b> or <b>Premium</b> one is best). Reload this page afterwards.</li>
+            <li><b>Windows:</b> open this page in <b>Microsoft Edge</b>, or add the language under Settings → Time &amp; language → Speech.</li>
+            <li><b>Android:</b> use <b>Chrome</b> and install the language in Settings → Text-to-speech. The story text still shows on screen meanwhile.</li>
+          </ul>
+        </div>
+      )}
       {voice && vStatus.voice && voiceQuality(vStatus.voice) === 'basic' && lang !== 'en' && (
         <div className="voice-tip sans">
           <b>🎙 This device only has a basic {pack.name} voice, which sounds robotic.</b> The app cannot improve it, but a better one is free:
