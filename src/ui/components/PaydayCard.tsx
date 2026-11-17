@@ -42,6 +42,43 @@ export function PaydayCard(p: PaydayCardProps) {
   return <PaydayCardShow key={run} {...p} onReplay={() => setRun((n) => n + 1)} />;
 }
 
+const POP_COLORS = {
+  ok: ['#2fbf71', '#ffd166', '#ff6b6b', '#6aa9ff', '#ffffff', '#c792ea'],
+  warn: ['#f6a609', '#ffd166', '#ff8a3d', '#ffffff'],
+} as const;
+
+/** Two little party poppers going off at the bottom corners as the stamp lands. Small on purpose. */
+function PartyPops({ tone }: { tone: 'ok' | 'warn' }) {
+  const colors = POP_COLORS[tone];
+  const per = tone === 'ok' ? 13 : 8;
+  const pieces: { k: string; side: 'l' | 'r'; dx: number; dy: number; rot: number; s: number; c: string; d: number }[] = [];
+  for (const side of ['l', 'r'] as const) {
+    for (let i = 0; i < per; i++) {
+      const t = (i + 0.5) / per;
+      const spread = (-72 + t * 50) * (Math.PI / 180); // fans up and inwards, never far
+      const dist = 62 + ((i * 37) % 64);
+      const sx = side === 'l' ? 1 : -1;
+      pieces.push({
+        k: `${side}${i}`, side,
+        dx: Math.cos(spread) * dist * sx * 1.1,
+        dy: Math.sin(spread) * dist * 1.25,
+        rot: ((i * 83) % 360) - 120,
+        s: 5 + (i % 3) * 1.6,
+        c: colors[(i + (side === 'l' ? 0 : 2)) % colors.length],
+        d: 2.12 + (i % 4) * 0.025,
+      });
+    }
+  }
+  return (
+    <div className="pc-pops" aria-hidden>
+      <i className="pc-pop-ring l" /><i className="pc-pop-ring r" />
+      {pieces.map((q) => (
+        <i key={q.k} className={`pc-pop ${q.side}`} style={{ ['--dx' as string]: `${q.dx}px`, ['--dy' as string]: `${q.dy}px`, ['--rot' as string]: `${q.rot}deg`, ['--s' as string]: `${q.s}px`, ['--c' as string]: q.c, ['--d' as string]: `${q.d}s` }} />
+      ))}
+    </div>
+  );
+}
+
 function PaydayCardShow(p: PaydayCardProps & { onReplay: () => void }) {
   const calm = reducedMotion();
   const { spec } = p;
@@ -182,6 +219,7 @@ function PaydayCardShow(p: PaydayCardProps & { onReplay: () => void }) {
           </g>
         )}
       </svg>
+      {!calm && p.tone !== 'bad' && <PartyPops tone={p.tone} />}
       <figcaption>
         <span className="pc-cap"><i style={{ background: tone }} aria-hidden /> {p.title}</span>
         {!calm && <button type="button" className="sm ghost" onClick={p.onReplay} aria-label="Replay the animation">↻ Replay</button>}

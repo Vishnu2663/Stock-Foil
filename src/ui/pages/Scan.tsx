@@ -1,3 +1,4 @@
+import { BtnIcon } from '../components/BtnIcon';
 import { useRef, useState } from 'react';
 import type { RGBA } from '../../vision/image';
 import { Camera } from '../components/Camera';
@@ -88,10 +89,13 @@ export function Scan({ preset }: { preset?: Slots }) {
           {slots[role]!.half.warnings.map((w) => <p key={w} className="small sans" style={{ color: 'var(--amber)' }}>⚠ {w}</p>)}
         </>
       ) : (
-        <p className="muted small sans">No photo yet</p>
+        <div className="sc-empty" aria-hidden>
+          <svg viewBox="0 0 64 48"><rect x="6" y="6" width="52" height="30" rx="5" /><circle cx="22" cy="21" r="5" /><circle cx="40" cy="21" r="5" /><path d="M6 40q13-6 26 0t26 0" /></svg>
+          <span>{role === 'S' ? 'Worker keeps this half' : 'Employer keeps this half'}</span>
+        </div>
       )}
       <div className="row" style={{ justifyContent: 'center' }}>
-        <button onClick={() => ref.current?.click()} disabled={busy}>🖼 {t('scanUpload')}</button>
+        <button onClick={() => ref.current?.click()} disabled={busy}><BtnIcon name="image" /> {t('scanUpload')}</button>
         <input ref={ref} type="file" accept="image/*" multiple hidden onChange={(e) => { onFiles(e.target.files); e.target.value = ''; }} />
       </div>
     </div>
@@ -113,29 +117,45 @@ export function Scan({ preset }: { preset?: Slots }) {
         </div>
       ) : (
         <>
-          <div className="row" style={{ marginBottom: 12 }}>
-            <button className="primary" onClick={() => setCam(true)} disabled={busy}>📷 Scan with camera (automatic)</button>
-            <span className="small muted sans">Just show each half. It captures by itself.</span>
+          <div className="sc-launch">
+            <svg className="sc-phone" viewBox="0 0 120 150" aria-hidden>
+              <rect x="22" y="6" width="76" height="138" rx="14" className="sc-phone-body" />
+              <rect x="30" y="22" width="60" height="104" rx="6" className="sc-phone-screen" />
+              <path d="M36 52h48" className="sc-phone-wave" /><path d="M36 62q8-5 16 0t16 0 16 0" className="sc-phone-cut" />
+              <rect x="30" y="22" width="60" height="3" className="sc-phone-beam" />
+              <path d="M34 34v-6h6M86 34v-6h-6M34 118v6h6M86 118v6h-6" className="sc-phone-corners" />
+            </svg>
+            <div className="sc-launch-txt">
+              <h2>Scan with the camera</h2>
+              <p>Show each half in turn. It focuses, reads and captures by itself, no button to press.</p>
+              <button className="primary big" onClick={() => setCam(true)} disabled={busy}><BtnIcon name="camera" /> Start camera</button>
+            </div>
           </div>
+
+          <ol className="sc-steps" aria-label="Progress">
+            <li className={slots.S ? 'done' : 'now'}><i>{slots.S ? '✓' : '1'}</i><span>Worker half</span></li>
+            <li className={slots.F ? 'done' : slots.S ? 'now' : ''}><i>{slots.F ? '✓' : '2'}</i><span>Employer half</span></li>
+            <li><i>3</i><span>Result</span></li>
+          </ol>
+
+          <p className="sc-or"><span>or add photos</span></p>
           <div className="grid2">
             {slot('S', fileS, t('scanStock'))}
             {slot('F', fileF, t('scanFoil'))}
           </div>
           <div className="row" style={{ marginTop: 12 }}>
-            <button onClick={() => fileBoth.current?.click()} disabled={busy}>🗂 Choose photos (one or both at once)</button>
+            <button onClick={() => fileBoth.current?.click()} disabled={busy}><BtnIcon name="images" /> Choose photos (one or both at once)</button>
             <input ref={fileBoth} type="file" accept="image/*" multiple hidden onChange={(e) => { onFiles(e.target.files); e.target.value = ''; }} />
             {busy && <span className="row sans"><span className="spin" /> {t('scanning')}</span>}
+            <span className="small muted sans">You can also drop photos anywhere on this page.</span>
           </div>
           {msg && <p className="card flat sans" style={{ marginTop: 12, borderColor: 'var(--bad)' }}>⚠ {msg}</p>}
-          <details style={{ marginTop: 16 }}>
-            <summary>Photo tips</summary>
-            <ul className="sans small">
-              <li>Dark, plain surface (a dark cloth works). The cut edge and holes show up against it.</li>
-              <li>Whole half in view: the four black corner squares, the QR, and the wavy edge.</li>
-              <li>Hold the phone above, roughly parallel to the table. Tilt and rotation are fine.</li>
-              <li>Avoid strong glare and shadows across the holes. Add light if the app says it is too dark.</li>
-            </ul>
-          </details>
+          <div className="sc-tips" aria-label="Photo tips">
+            <div><i><BtnIcon name="moon" /></i><b>Dark, plain surface</b><span>A dark cloth works. The cut edge and holes show up against it.</span></div>
+            <div><i><BtnIcon name="frame" /></i><b>Whole half in view</b><span>The four black corner squares, the QR and the wavy edge.</span></div>
+            <div><i><BtnIcon name="angle" /></i><b>Hold it above</b><span>Roughly parallel to the table. Tilt and rotation are fine.</span></div>
+            <div><i><BtnIcon name="bulb" /></i><b>Even light</b><span>No glare or shadows across the holes. Add light if asked.</span></div>
+          </div>
         </>
       )}
     </div>

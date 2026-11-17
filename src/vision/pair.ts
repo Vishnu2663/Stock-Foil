@@ -7,7 +7,7 @@
 import { cardCode, waveSeed, type CardSpec } from '../core/card';
 import { makeWave } from '../core/wave';
 import { compareHalves, computePay, type Comparison, type PayResult, type RateChange, type Verdict } from '../core/wages';
-import { advCells, dayCells } from '../core/layout';
+import { punchCells } from '../core/layout';
 import { verifyPairTokens } from '../core/pairing';
 import type { CellReading, HalfScan } from './detect';
 
@@ -36,7 +36,7 @@ export interface PairResult {
   /** how the two halves were matched: the QR secrets, or (older cards) only the cut */
   pairing: 'verified' | 'failed' | 'legacy';
   alignment: Alignment;
-  uncertainCells: { kind: 'day' | 'adv'; n: number; half: 'S' | 'F' }[];
+  uncertainCells: { kind: 'day' | 'pm' | 'adv'; n: number; half: 'S' | 'F' }[];
 }
 
 function corr(a: number[], b: number[]): number {
@@ -83,7 +83,7 @@ export interface Alignment {
   checked: boolean;
   shared: number;
   /** holes whose position disagrees with where the other half says they should be */
-  flagged: { kind: 'day' | 'adv'; n: number; residualMm: number }[];
+  flagged: { kind: 'day' | 'pm' | 'adv'; n: number; residualMm: number }[];
   maxResidualMm: number;
 }
 
@@ -91,7 +91,7 @@ export const MIN_ALIGN_HOLES = 4;
 /** Holes punched together agree to well under a millimetre; separately made ones rarely do. */
 export const ALIGN_TOL_MM = 1.2;
 
-interface Pair2 { a: { x: number; y: number }; b: { x: number; y: number }; kind: 'day' | 'adv'; n: number }
+interface Pair2 { a: { x: number; y: number }; b: { x: number; y: number }; kind: 'day' | 'pm' | 'adv'; n: number }
 
 /** Rigid fit (rotation + shift) mapping a-points onto b-points. */
 function rigidFit(ps: Pair2[]) {
@@ -116,10 +116,11 @@ function rigidFit(ps: Pair2[]) {
  */
 export function checkAlignment(stock: HalfScan, foil: HalfScan, tolMm: number = ALIGN_TOL_MM): Alignment {
   const spec = stock.payload.spec;
-  const cells = [...dayCells(spec.year, spec.month), ...advCells()];
+  const cells = punchCells(spec);
+  const rows = (h: HalfScan, kind: 'day' | 'pm' | 'adv') => (kind === 'day' ? h.days : kind === 'pm' ? h.pm : h.adv);
   const ps: Pair2[] = [];
   for (const c of cells) {
-    const list = (h: HalfScan) => (c.kind === 'day' ? h.days : h.adv).find((r) => r.n === c.n);
+    const list = (h: HalfScan) => rows(h, c.kind).find((r) => r.n === c.n);
     const s = list(stock), f = list(foil);
     if (!s?.punched || !f?.punched || s.dx === undefined || f.dx === undefined || s.dy === undefined || f.dy === undefined) continue;
     ps.push({ a: { x: c.cx + s.dx, y: c.cy + s.dy }, b: { x: c.cx + f.dx, y: c.cy + f.dy }, kind: c.kind, n: c.n });
@@ -131,7 +132,7 @@ export function checkAlignment(stock: HalfScan, foil: HalfScan, tolMm: number = 
   const clipped = new Set<string>();
   for (const c of cells) {
     for (const h of [stock, foil]) {
-      const r = (c.kind === 'day' ? h.days : h.adv).find((x) => x.n === c.n);
+      const r = rows(h, c.kind).find((x) => x.n === c.n);
       if (r?.punched && r.clipped) clipped.add(`${c.kind}${c.n}`);
     }
   }
@@ -213,11 +214,12 @@ export function verifyPair(stock: HalfScan, foil: HalfScan, opts: VerifyOptions 
   });
 
   const nDays = Math.max(ss.year ? stock.days.length : 0, foil.days.length);
+  const halves = !!ss.halves;
   const cmp = compareHalves(
-    { days: marks(stock.days, nDays), adv: marks(stock.adv, 10) },
-    { days: marks(foil.days, nDays), adv: marks(foil.adv, 10) },
+    { days: marks(stock.days, nDays), adv: marks(stock.adv, 10), ...(halves ? { pm: marks(stock.pm, nDays) } : {}) },
+    { days: marks(foil.days, nDays), adv: marks(foil.adv, 10), ...(halves ? { pm: marks(foil.pm, nDays) } : {}) },
   );
-  checks.push({ label: 'Every punch is on both halves', ok: cmp.consistent, detail: cmp.consistent ? 'No one-sided holes' : `${cmp.stockOnlyDays.length + cmp.foilOnlyDays.length} day(s), ${cmp.stockOnlyAdv.length + cmp.foilOnlyAdv.length} advance(s) on one half only` });
+  checks.push({ label: 'Every punch is on both halves', ok: cmp.consistent, detail: cmp.consistent ? 'No one-sided holes' : `${cmp.stockOnlyDays.length + cmp.foilOnlyDays.length + cmp.stockOnlyPm.length + cmp.foilOnlyPm.length} day(s), ${cmp.stockOnlyAdv.length + cmp.foilOnlyAdv.length} advance(s) on one half only` });
 
   const alignment = checkAlignment(stock, foil, opts.alignTolMm ?? ALIGN_TOL_MM);
   checks.push({
@@ -227,7 +229,7 @@ export function verifyPair(stock: HalfScan, foil: HalfScan, opts: VerifyOptions 
       ? `Need ${MIN_ALIGN_HOLES}+ matching holes to check (have ${alignment.shared})`
       : alignment.flagged.length === 0
         ? `${alignment.shared} holes line up (worst ${alignment.maxResidualMm.toFixed(2)} mm)`
-        : `Look separately made: ${alignment.flagged.map((f) => (f.kind === 'day' ? `day ${f.n}` : `advance ${f.n}`) + ` (${f.residualMm.toFixed(1)} mm off)`).join(', ')}`,
+        : `Look separately made: ${alignment.flagged.map((f) => (f.kind === 'day' ? `day ${f.n}${ss.halves ? ' (1st half)' : ''}` : f.kind === 'pm' ? `day ${f.n} (2nd half)` : `advance ${f.n}`) + ` (${f.residualMm.toFixed(1)} mm off)`).join(', ')}`,
   });
 
   const pay = computePay(cmp, ss.rateMinor, ss.advMinor, ss.carryMinor, opts.rateChange);
@@ -237,8 +239,8 @@ export function verifyPair(stock: HalfScan, foil: HalfScan, opts: VerifyOptions 
   checks.push({ label: 'Photos are sharp and complete enough to read', ok: poseOk, detail: poseOk ? `Corner squares: worker ${stock.fiducialsFound}/4, employer ${foil.fiducialsFound}/4` : `Only ${stock.fiducialsFound}/4 and ${foil.fiducialsFound}/4 corner squares found. Retake with the whole half in view.` });
   const verdict: Verdict = !poseOk && pairOk ? 'unreliable' : !pairOk ? 'pair-mismatch' : !cmp.consistent ? 'genuine-disputed' : alignment.flagged.length ? 'review' : edge.verdict === 'inconclusive' && cutDecides ? 'inconclusive' : 'genuine-consistent';
   const uncertainCells = [
-    ...[...stock.days, ...stock.adv].filter((c) => c.uncertain && !c.manual).map((c) => ({ kind: c.kind, n: c.n, half: 'S' as const })),
-    ...[...foil.days, ...foil.adv].filter((c) => c.uncertain && !c.manual).map((c) => ({ kind: c.kind, n: c.n, half: 'F' as const })),
+    ...[...stock.days, ...stock.pm, ...stock.adv].filter((c) => c.uncertain && !c.manual).map((c) => ({ kind: c.kind, n: c.n, half: 'S' as const })),
+    ...[...foil.days, ...foil.pm, ...foil.adv].filter((c) => c.uncertain && !c.manual).map((c) => ({ kind: c.kind, n: c.n, half: 'F' as const })),
   ];
   return { spec: ss, code: cardCode(ss), checks, edge, cmp, pay, verdict, pairing, alignment, uncertainCells };
 }

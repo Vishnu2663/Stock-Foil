@@ -3,7 +3,8 @@ import { explainPay } from '../../ai';
 import { daysInMonth, firstWeekday, formatMoney, MAX_AMOUNT_MAJOR } from '../../core/card';
 import { AmountInput } from './AmountInput';
 import { PaydayCard } from './PaydayCard';
-import { confetti, useCountUp } from '../fx';
+import { PayBreakdown } from './PayBreakdown';
+import { useCountUp } from '../fx';
 import { weekdayShort, monthName, t } from '../../i18n';
 import { addCrew, addReceipt, loadReceipts } from '../../store';
 import { paymentStatus, payable } from '../../core/settlement';
@@ -65,7 +66,6 @@ export function Results({ stock, foil, onReset }: { stock: Captured; foil: Captu
     // celebrate a clean, genuine result once per card (never on a dispute, a mismatch or an unreliable scan)
     if (r.verdict === 'genuine-consistent' && celebrated.current !== spec.id) {
       celebrated.current = spec.id;
-      confetti({ y: 0.22 });
     }
   }, [r.verdict, spec.id]);
   const cls = r.verdict === 'genuine-consistent' ? 'ok' : r.verdict === 'pair-mismatch' || unreliable ? 'bad' : 'warn';
@@ -247,37 +247,7 @@ export function Results({ stock, foil, onReset }: { stock: Captured; foil: Captu
             )}
           </div>
         </details>
-        <div className="formula">
-          {r.pay.agreed.rateChange ? (
-            <>
-              <span>{r.pay.agreed.rateChange.daysBefore} × {m(spec.rateMinor)}</span>
-              <span className="op">+</span>
-              <span title={`wage from day ${r.pay.agreed.rateChange.fromDay}`}>{r.pay.agreed.rateChange.daysAfter} × {m(r.pay.agreed.rateChange.rateMinor)}</span>
-            </>
-          ) : (
-            <>
-              <span>{r.pay.agreed.days}</span>
-              <span className="op">days ×</span>
-              <span>{m(spec.rateMinor)}</span>
-            </>
-          )}
-          <span className="op">−</span>
-          <span>{r.pay.agreed.advances} × {m(spec.advMinor)}</span>
-          {carry !== 0 && <><span className="op">{carry < 0 ? '−' : '+'}</span><span title="balance brought forward from last month">{m(Math.abs(carry))} b/f</span></>}
-          <span className="op">=</span>
-          <span className="total">{m(Math.round(totalShown))}</span>
-        </div>
-        <table className="t" style={{ marginTop: 12 }}>
-          <thead>
-            <tr><th>View</th><th>Days</th><th>Advances</th><th>Net</th></tr>
-          </thead>
-          <tbody>
-            <tr><td>✅ Agreed (both halves)</td><td>{r.pay.agreed.days}</td><td>{r.pay.agreed.advances}</td><td><b>{m(r.pay.agreed.netMinor)}</b></td></tr>
-            <tr><td>Worker half alone</td><td>{r.pay.workerView.days}</td><td>{r.pay.workerView.advances}</td><td>{m(r.pay.workerView.netMinor)}</td></tr>
-            <tr><td>Employer half alone</td><td>{r.pay.employerView.days}</td><td>{r.pay.employerView.advances}</td><td>{m(r.pay.employerView.netMinor)}</td></tr>
-          </tbody>
-        </table>
-        {r.pay.disputedMinor > 0 && <p className="small sans" style={{ color: 'var(--amber)', marginTop: 8 }}>In dispute: {m(r.pay.disputedMinor)}. Pay the agreed amount now; settle the rest together.</p>}
+        <PayBreakdown pay={r.pay} rateMinor={spec.rateMinor} advMinor={spec.advMinor} money={m} netShown={totalShown} />
         {status.paid && (
           <div className="card flat sans" style={{ marginTop: 10, borderColor: status.changed ? 'var(--bad)' : 'var(--green)' }}>
             <b>💰 Already paid</b> on {new Date(status.at!).toLocaleDateString(lang)}: {m(status.amountMinor!)}.

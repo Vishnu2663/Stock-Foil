@@ -12,9 +12,8 @@ import { decodePayload, type DecodedPayload } from '../core/card';
 import type { PairToken } from '../core/pairing';
 import { applyH, findAffine, findHomography, type H } from '../core/homography';
 import {
-  advCells,
   cellRefPoints,
-  dayCells,
+  punchCells,
   fiducialCentres,
   qrCorners,
   FIDUCIAL,
@@ -43,7 +42,8 @@ export const DEFAULTS: Required<DetectOptions> = {
 };
 
 export interface CellReading {
-  kind: 'day' | 'adv';
+  /** 'pm' is the second-half-day circle of a date on cards with half-day circles */
+  kind: 'day' | 'pm' | 'adv';
   n: number;
   punched: boolean;
   /** centre luminance / local paper luminance */
@@ -76,6 +76,8 @@ export interface HalfScan {
   paperRef: number;
   bgRef: number;
   days: CellReading[];
+  /** second-half circles (empty on cards without half-day circles) */
+  pm: CellReading[];
   adv: CellReading[];
   /** x positions (frame mm) where the cut edge was sampled */
   edgeXs: number[];
@@ -555,7 +557,7 @@ export function readHalf(g: Gray, qrImg: Pt[], payload: DecodedPayload, o: Requi
   if (pxPerMm < 2) warnings.push('Card is small in the photo — move the camera closer.');
 
   const { spec } = payload;
-  const cells = [...dayCells(spec.year, spec.month), ...advCells()];
+  const cells = punchCells(spec);
   const refs: number[] = [];
   const cellRef = new Map<Cell, number>();
   for (const c of cells) {
@@ -574,7 +576,7 @@ export function readHalf(g: Gray, qrImg: Pt[], payload: DecodedPayload, o: Requi
     // A target we could not see is never read as "no hole": it is flagged unsure.
     const unseen = !Number.isFinite(ratio);
     const punched = !unseen && ratio < o.punchRatio;
-    const hc = punched ? holeCentre(g, H, { x: c.cx, y: c.cy }, ref, { x0: c.x, y0: c.y, x1: c.x + (c.kind === 'day' ? 4.6 : 3.8), y1: c.y + (c.kind === 'day' ? 4.2 : 3.6) }) : null;
+    const hc = punched ? holeCentre(g, H, { x: c.cx, y: c.cy }, ref, { x0: c.x, y0: c.y, x1: c.x + (c.kind !== 'adv' ? 4.6 : 3.8), y1: c.y + (c.kind !== 'adv' ? 4.2 : 3.6) }) : null;
     return {
       kind: c.kind,
       n: c.n,
@@ -647,6 +649,7 @@ export function readHalf(g: Gray, qrImg: Pt[], payload: DecodedPayload, o: Requi
     paperRef,
     bgRef,
     days: readings.filter((r) => r.kind === 'day'),
+    pm: readings.filter((r) => r.kind === 'pm'),
     adv: readings.filter((r) => r.kind === 'adv'),
     edgeXs,
     edge,

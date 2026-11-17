@@ -19,6 +19,23 @@ function Gear() {
  * collapses to a menu button with the same items as a list. Keyboard: Escape closes,
  * ArrowDown/Up/Home/End move through a menu, and menus are ordinary links.
  */
+/** Section tiles: one line-icon language and a colour per section. */
+const NAV_HUE: Record<string, string> = { home: '#f0a24b', issue: '#6aa9ff', scan: '#ff6a55', members: '#9be37a', crew: '#e0925f', story: '#ff8a3d', records: '#6fd39a', more: '#b99cff' };
+function NavIcon({ id, fallback }: { id: string; fallback?: string }) {
+  const g: Record<string, JSX.Element> = {
+    home: <><path d="M4 11l8-6.5 8 6.5" /><path d="M6 10v9h12v-9" /><path d="M10 19v-5h4v5" /></>,
+    issue: <><rect x="3" y="6" width="18" height="12" rx="2.5" /><path d="M3 10.5h18M7 15h4" /></>,
+    scan: <><path d="M4 8V6.5A2.5 2.5 0 0 1 6.5 4H8M16 4h1.5A2.5 2.5 0 0 1 20 6.5V8M20 16v1.5a2.5 2.5 0 0 1-2.5 2.5H16M8 20H6.5A2.5 2.5 0 0 1 4 17.5V16" /><circle cx="12" cy="12" r="3" /></>,
+    members: <><circle cx="9" cy="9" r="3" /><path d="M3.5 19c.5-3 2.7-4.5 5.5-4.5s5 1.5 5.5 4.5" /><circle cx="17" cy="9.5" r="2.4" /><path d="M15.5 14.6c2.6-.3 4.5.9 5 3.9" /></>,
+    crew: <><rect x="3.5" y="8" width="17" height="11" rx="2.5" /><path d="M9 8V6.5A1.5 1.5 0 0 1 10.5 5h3A1.5 1.5 0 0 1 15 6.5V8M3.5 13h17M11 13v2h2v-2" /></>,
+    story: <path d="M12 3c1 3.2 4.5 5 4.5 9.2A4.5 4.5 0 0 1 12 17c-2.5 0-4.5-1.9-4.5-4.4 0-1.7.9-2.8 1.8-3.8.2 1.2.8 2 1.6 2.4C10.5 8 11 5.5 12 3zM8 19.5c1 .9 2.4 1.5 4 1.5s3-.6 4-1.5" />,
+    records: <><path d="M5 4.5h11a2 2 0 0 1 2 2V20H7a2 2 0 0 1-2-2z" /><path d="M9 9h6M9 12.5h6" /></>,
+    more: <><circle cx="7" cy="7" r="1.7" /><circle cx="17" cy="7" r="1.7" /><circle cx="7" cy="17" r="1.7" /><circle cx="17" cy="17" r="1.7" /></>,
+  };
+  const icon = g[id];
+  return <span className="nav-ic" aria-hidden>{icon ? <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" width="22" height="22">{icon}</svg> : fallback}</span>;
+}
+
 /** Line icons for the dropdown tiles: one visual language instead of mixed emoji. */
 const DD_HUE: Record<string, string> = { history: '#f0a24b', ledger: '#e0925f', income: '#6fd39a', punch: '#ff6a55', demo: '#6aa9ff', lab: '#9be37a', calibrate: '#ff8a3d', about: '#b99cff' };
 function DdIcon({ route, fallback }: { route: string; fallback: string }) {
@@ -64,7 +81,7 @@ export function TopNav({ route, primary, groups, settings }: { route: string; pr
         setPanel(false);
       }
     };
-    const scroll = () => setScrolled(window.scrollY > 4);
+    const scroll = () => setScrolled((was) => (window.scrollY > 70 ? true : window.scrollY < 24 ? false : was));
     document.addEventListener('mousedown', down);
     document.addEventListener('keydown', key);
     window.addEventListener('scroll', scroll, { passive: true });
@@ -95,6 +112,12 @@ export function TopNav({ route, primary, groups, settings }: { route: string; pr
     return () => { cancelAnimationFrame(id); window.removeEventListener('resize', settle); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [route]);
+  useEffect(() => {
+    // the tiles shrink when the page scrolls: measure again once that has settled
+    const t = setTimeout(() => placePill(activeItem(), false), 340);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scrolled]);
   useEffect(() => {
     const on = () => {
       const h = document.documentElement.scrollHeight - window.innerHeight;
@@ -145,6 +168,10 @@ export function TopNav({ route, primary, groups, settings }: { route: string; pr
         <button className="burger" aria-expanded={panel} aria-controls="mainnav" aria-label="Menu" onClick={() => setPanel((p) => !p)}>
           <span className="bars" aria-hidden><i /><i /><i /></span> <span className="burger-label">Menu</span>
         </button>
+        <a href={`#/${settings.route}`} className={`settings-top ${route === settings.route ? 'on' : ''}`} aria-label={settings.label} aria-current={route === settings.route ? 'page' : undefined}>
+          <Gear />
+          <span className="settings-label">{settings.label}</span>
+        </a>
         <nav
           id="mainnav"
           ref={navRef}
@@ -158,15 +185,15 @@ export function TopNav({ route, primary, groups, settings }: { route: string; pr
         >
           {pill && <span className="nav-pill" data-tone={pill.tone} style={{ transform: `translate(${pill.x}px, ${pill.y}px)`, width: pill.w, height: pill.h }} aria-hidden />}
           {primary.map((i) => (
-            <a key={i.route} href={`#/${i.route}`} className={`${route === i.route ? 'on' : ''} ${i.accent ? 'accent' : ''}`} aria-current={route === i.route ? 'page' : undefined}>{i.icon && <span className="ico" aria-hidden>{i.icon}</span>}{i.label}</a>
+            <a key={i.route} href={`#/${i.route}`} style={{ ['--hue' as string]: NAV_HUE[i.route] ?? '#ff8a3d' }} className={`${route === i.route ? 'on' : ''} ${i.accent ? 'accent' : ''}`} aria-current={route === i.route ? 'page' : undefined}><NavIcon id={i.route} fallback={i.icon} /><span className="nav-lbl">{i.label}</span></a>
           ))}
           {groups.map((g) => {
             const active = g.items.some((i) => i.route === route);
             const open = openMenu === g.id;
             return (
               <div key={g.id} data-group={g.id} className={`dd ${open ? 'open' : ''} ${g.items.length > 4 ? 'wide' : ''}`} onKeyDown={menuKeys}>
-                <button className={`dd-btn ${active ? 'on' : ''}`} aria-haspopup="true" aria-expanded={open} onClick={() => setOpenMenu(open ? null : g.id)}>
-                  {g.label} <span aria-hidden className="caret">▾</span>
+                <button className={`dd-btn ${active ? 'on' : ''}`} style={{ ['--hue' as string]: NAV_HUE[g.id] ?? '#ff8a3d' }} aria-haspopup="true" aria-expanded={open} onClick={() => setOpenMenu(open ? null : g.id)}>
+                  <NavIcon id={g.id} /><span className="nav-lbl">{g.label} <span aria-hidden className="caret">▾</span></span>
                 </button>
                 <div className="dd-menu" role="menu" aria-label={g.label}>
                   <div className="dd-title">{g.label}</div>

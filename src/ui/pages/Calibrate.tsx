@@ -1,3 +1,4 @@
+import { BtnIcon } from '../components/BtnIcon';
 import { useRef, useState } from 'react';
 import type { HalfScan } from '../../vision/detect';
 import { calibrate, DEFAULT_PUNCH_RATIO } from '../../vision/calibrate';
@@ -53,7 +54,7 @@ export function Calibrate() {
 
       <div className="card">
         <div className="row">
-          <button className="primary" onClick={() => input.current?.click()} disabled={busy}>🖼 Choose photos</button>
+          <button className="primary" onClick={() => input.current?.click()} disabled={busy}><BtnIcon name="image" /> Choose photos</button>
           <input ref={input} type="file" accept="image/*" multiple hidden onChange={(e) => { add(e.target.files); e.target.value = ''; }} />
           <button className="ghost" onClick={() => { setRows([]); setMsg(''); }} disabled={!rows.length}>Clear</button>
           {busy && <span className="row sans"><span className="spin" /> Reading…</span>}

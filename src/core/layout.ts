@@ -72,8 +72,8 @@ export function qrCorners(): Pt[] {
 }
 
 export interface Cell {
-  /** 'day' cells carry the day of month (1-31); 'adv' cells carry index 1-10. */
-  kind: 'day' | 'adv';
+  /** 'day' cells carry the day of month (1-31) (the first half when the card has half-day circles); 'pm' cells are the second-half circle of that same date; 'adv' cells carry index 1-10. */
+  kind: 'day' | 'pm' | 'adv';
   n: number;
   /** Top-left of the cell box. */
   x: number;
@@ -85,7 +85,10 @@ export interface Cell {
   cy: number;
 }
 
-export function dayCells(year: number, month: number): Cell[] {
+/** Distance of each half-day circle from the middle of its date box (mm). Holes are 6 mm, boxes 16 mm wide. */
+export const HALF_DX = 4.1;
+
+export function dayCells(year: number, month: number, halves = false): Cell[] {
   const first = firstWeekday(year, month);
   const n = daysInMonth(year, month);
   const out: Cell[] = [];
@@ -95,9 +98,19 @@ export function dayCells(year: number, month: number): Cell[] {
     const row = Math.floor(idx / 7);
     const x = GRID_X + col * CELL_W;
     const y = GRID_Y + row * CELL_H;
-    out.push({ kind: 'day', n: d, x, y, w: CELL_W, h: CELL_H, cx: x + CELL_W / 2, cy: y + CELL_H / 2 + 0.6 });
+    out.push({ kind: 'day', n: d, x, y, w: CELL_W, h: CELL_H, cx: x + CELL_W / 2 - (halves ? HALF_DX : 0), cy: y + CELL_H / 2 + 0.6 });
   }
   return out;
+}
+
+/** The second-half circle of every date (only on cards with half-day circles). */
+export function pmCells(year: number, month: number): Cell[] {
+  return dayCells(year, month, true).map((c) => ({ ...c, kind: 'pm' as const, cx: c.cx + 2 * HALF_DX }));
+}
+
+/** Every punch target of a card, in reading order. */
+export function punchCells(spec: { year: number; month: number; halves?: boolean }): Cell[] {
+  return [...dayCells(spec.year, spec.month, !!spec.halves), ...(spec.halves ? pmCells(spec.year, spec.month) : []), ...advCells()];
 }
 
 export function advCells(): Cell[] {
@@ -112,10 +125,11 @@ export function advCells(): Cell[] {
 /** Points inside a cell, away from the punch, number and border: local paper reference. */
 export function cellRefPoints(c: Cell): Pt[] {
   const dx = c.w / 2 - 1.6;
+  const mx = c.x + c.w / 2; // box centre, so both half-day circles share the same paper references
   return [
-    { x: c.cx - dx, y: c.y + c.h - 1.6 },
-    { x: c.cx + dx, y: c.y + c.h - 1.6 },
-    { x: c.cx + dx, y: c.y + 2.2 },
+    { x: mx - dx, y: c.y + c.h - 1.6 },
+    { x: mx + dx, y: c.y + c.h - 1.6 },
+    { x: mx + dx, y: c.y + 2.2 },
   ];
 }
 
