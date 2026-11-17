@@ -1,0 +1,10 @@
+{
+  "name": "Stock & Foil",
+  "short_name": "Stock&Foil",
+  "description": "A tamper-proof paper work record both sides hold.",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#f4ead2",
+  "theme_color": "#7a1f1f",
+  "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }]
+}

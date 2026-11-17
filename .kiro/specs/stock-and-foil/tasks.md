@@ -1,0 +1,23 @@
+# Tasks
+
+- [x] 1. Core: card payload, card code, calendar helpers (R1.3, R1.4)
+- [x] 2. Core: seeded wavy cut line and shared layout (R1.1, R1.2)
+- [x] 3. Core: homography and affine fitting
+- [x] 4. Core: compare + pay arithmetic with property tests P5–P7 (R4)
+- [x] 5. Render: printable SVG sheet (R1, R2)
+- [x] 6. Render: phone-photo simulator
+- [x] 7. Vision: QR search with denoise/unsharp/upscale fallbacks
+- [x] 8. Vision: pose refinement (affine-first, validated blobs, adaptive window)
+- [x] 9. Vision: punch reading with unseen → unsure (R3.2, R3.4)
+- [x] 10. Vision: cut-edge tracing and pair authentication (R3.3)
+- [x] 11. Property tests P8–P11 on thousands of simulated photos (R3.5)
+- [x] 12. UI: issue/print, scan with live guidance, results with manual correction
+- [x] 13. UI: pictorial slip, language packs, read-aloud (R5)
+- [x] 14. Hash-chained ledger with tamper test (R6)
+- [x] 15. Free AI providers with offline fallback and anonymisation (R7)
+- [x] 16. PWA offline shell (R8)
+- [x] 16b. Scanner in a Web Worker; ledger and AI tests; removed keyless AI endpoint that now needs a bot-check
+- [x] 16c. Punched-together alignment check, crew payroll with cash breakdown, Halloween story mode, hosting setup
+- [ ] 17. Native-speaker review of translations
+- [ ] 18. Field test with printed cards, real punches and real phones
+- [ ] 19. Calibrate the 1.2 mm alignment tolerance on photos of really punched cards

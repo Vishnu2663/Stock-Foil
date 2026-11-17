@@ -1,0 +1,6 @@
+{
+  "name": "Run fast property tests on save",
+  "version": "1",
+  "when": { "type": "fileEdited", "patterns": ["src/core/**/*.ts", "src/vision/**/*.ts"] },
+  "then": { "type": "askAgent", "prompt": "Run `npx vitest run tests/wages.test.ts tests/core.test.ts` and report failures. If src/vision changed, also run `SF_RUNS=10 npx vitest run tests/scan.test.ts`." }
+}

@@ -1,0 +1,9 @@
+# Netlify: connect the repo, or drag the dist/ folder onto https://app.netlify.com/drop
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[[headers]]
+  for = "/sw.js"
+  [headers.values]
+    Cache-Control = "no-cache"
