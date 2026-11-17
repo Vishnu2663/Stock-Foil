@@ -14,13 +14,15 @@ import { Issue } from './pages/Issue';
 import { Lab } from './pages/Lab';
 import { Members } from './pages/Members';
 import { Ledger } from './pages/Ledger';
+import { History } from './pages/History';
 import { Punch } from './pages/Punch';
 import { Scan } from './pages/Scan';
 import { Settings } from './pages/Settings';
 import { TopNav } from './components/TopNav';
-import { initTilt } from './fx';
+import { initReveal, initRipple, initTilt } from './fx';
+import { HolesField } from './components/HolesField';
 
-const ROUTES = ['home', 'issue', 'punch', 'scan', 'members', 'crew', 'income', 'calibrate', 'demo', 'story', 'lab', 'ledger', 'about', 'settings'] as const;
+const ROUTES = ['home', 'issue', 'punch', 'scan', 'members', 'crew', 'income', 'calibrate', 'demo', 'story', 'lab', 'history', 'ledger', 'about', 'settings'] as const;
 type Route = (typeof ROUTES)[number];
 
 const readRoute = (): Route => {
@@ -35,7 +37,11 @@ export function App() {
   const [reprintId, setReprintId] = useState<string | null>(null);
   const [draft, setDraft] = useState<Partial<CardSpec> | null>(null);
 
-  useEffect(() => { initTilt(); }, []);
+  useEffect(() => {
+    initTilt();
+    initRipple();
+    return initReveal();
+  }, []);
   useEffect(() => {
     const on = () => setRoute(readRoute());
     window.addEventListener('hashchange', on);
@@ -67,15 +73,16 @@ export function App() {
   );
   const t = ctx.t;
   const primary = [
-    { route: 'home', label: t('navHome') },
-    { route: 'issue', label: t('navIssue') },
-    { route: 'scan', label: t('navScan') },
-    { route: 'members', label: 'Members' },
-    { route: 'crew', label: 'Crew' },
-    { route: 'story', label: '🎃 Story', accent: true },
+    { route: 'home', icon: '🏠', label: t('navHome') },
+    { route: 'issue', icon: '🪪', label: t('navIssue') },
+    { route: 'scan', icon: '📷', label: t('navScan') },
+    { route: 'members', icon: '👥', label: 'Members' },
+    { route: 'crew', icon: '🧰', label: 'Crew' },
+    { route: 'story', icon: '🎃', label: 'Story', accent: true },
   ];
   const groups = [
     { id: 'records', label: 'Records', items: [
+      { route: 'history', icon: '🕘', label: 'History', hint: 'Every payday scan, paid or yet to pay' },
       { route: 'ledger', icon: '📒', label: t('navLedger'), hint: 'Receipts, paid status, cards' },
       { route: 'income', icon: '🧾', label: 'Income proof', hint: 'Certificate for a loan or rent' },
     ] },
@@ -97,6 +104,7 @@ export function App() {
   return (
     <AppCtx.Provider value={ctx}>
       <div className="ambient" aria-hidden><i /><i /><i /></div>
+      <HolesField />
       <TopNav route={route} primary={primary} groups={groups} settings={{ route: 'settings', label: 'Settings' }} />
       <main className="wrap" key={route}>
         {route === 'home' && <Home go={go} />}
@@ -110,6 +118,7 @@ export function App() {
         {route === 'demo' && <Demo />}
         {route === 'story' && <Story go={go} />}
         {route === 'lab' && <Lab />}
+        {route === 'history' && <History go={go} />}
         {route === 'ledger' && <Ledger go={(r) => { setReprintId(null); go(r); }} reprint={(id) => { setReprintId(id); go('issue'); }} edit={editCard} />}
         {route === 'about' && <About />}
         {route === 'settings' && <Settings />}

@@ -79,7 +79,7 @@ export function Scan({ preset }: { preset?: Slots }) {
   if (both) return <Results stock={slots.S!} foil={slots.F!} onReset={() => setSlots({})} />;
 
   const slot = (role: 'S' | 'F', ref: React.RefObject<HTMLInputElement>, label: string) => (
-    <div className={`drop ${slots[role] ? 'has' : ''}`}>
+    <div className={`drop ${slots[role] ? 'has' : ''} ${drag ? 'hot' : ''}`}>
       <h3>{label}</h3>
       {slots[role] ? (
         <>

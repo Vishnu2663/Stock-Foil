@@ -62,7 +62,7 @@ export function carryFor(m: Member, cards: CardSpec[], receipts: ReceiptLike[], 
   const pm = month === 1 ? 12 : month - 1;
   const key = `${py}-${String(pm).padStart(2, '0')}`;
   const ids = new Set(cards.filter((c) => ownsCard(m, c) && c.year === py && c.month === pm).map((c) => c.id));
-  const last = receipts.filter((r) => ids.has(r.cardId) && r.month === key && r.verdict !== 'paid').sort((a, b) => b.seq - a.seq)[0];
+  const last = receipts.filter((r) => ids.has(r.cardId) && r.month === key && r.verdict !== 'paid' && r.verdict !== 'unpaid').sort((a, b) => b.seq - a.seq)[0];
   return last && last.netMinor < 0 ? last.netMinor : 0;
 }
 

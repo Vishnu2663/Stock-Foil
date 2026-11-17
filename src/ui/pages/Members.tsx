@@ -1,5 +1,6 @@
 import { Fragment, useMemo, useState } from 'react';
 import { formatMoney, MAX_AMOUNT_MAJOR, type CardSpec } from '../../core/card';
+import { MonthPicker } from '../components/MonthPicker';
 import { AmountInput } from '../components/AmountInput';
 import { useCountUp } from '../fx';
 import { bulkSpecs, cardsOf, carryFor, hasCardForMonth, memberStats, newMember } from '../../core/members';
@@ -107,7 +108,7 @@ export function Members({ newCardFor }: { go: (r: string) => void; newCardFor: (
 
         <div className="card">
           <h3>Create cards for everyone</h3>
-          <div className="field"><label>Month</label><input type="month" value={ym} onChange={(e) => setYm(e.target.value)} /></div>
+          <MonthPicker label="Month" value={ym} onChange={setYm} />
           <p className="sans small">{missing.length === 0 ? (members.length ? '✅ Everyone already has a card for this month.' : 'Add members first.') : <>Missing a card this month: <b>{missing.map((m) => { const c = carryFor(m, cards, loadReceipts(), year, month); return c ? `${m.name} (owes ${formatMoney(-c, m.currency, lang)} from last month)` : m.name; }).join(', ')}</b></>}</p>
           <button className="primary" onClick={bulk} disabled={busy || missing.length === 0}>{busy ? <span className="spin" /> : '⬇'} Create {missing.length} card{missing.length === 1 ? '' : 's'} + one PDF</button>
           <p className="small muted sans" style={{ marginTop: 8 }}>Makes one new unique card (own wavy cut) per member, saves them, and downloads a single PDF with one A4 page each. Print at 100% / Actual size.</p>

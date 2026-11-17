@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { MAX_AMOUNT_MAJOR, MAX_CARRY_MAJOR, newCardSpec, type CardSpec } from '../../core/card';
+import { MonthPicker } from '../components/MonthPicker';
 import { AmountInput } from '../components/AmountInput';
 import { randomId } from '../../core/prng';
 import { newPairing, type Pairing } from '../../core/pairing';
@@ -52,31 +53,35 @@ export function Issue({ initial, draft }: { initial?: CardSpec; draft?: Partial<
         </div>
       )}
       <div className="grid2">
-        <div className="card no-print">
+        <div className="card no-print issue-form">
+          <div className="fs-h"><span>1</span> Who is this card for?</div>
           <div className="field"><label>Worker name</label><input value={worker} maxLength={18} onChange={(e) => setWorker(e.target.value)} placeholder="e.g. Ramesh" /></div>
           <div className="field"><label>Employer / contractor</label><input value={employer} maxLength={18} onChange={(e) => setEmployer(e.target.value)} placeholder="e.g. Sharma Builders" /></div>
-          <div className="row">
-            <div className="field" style={{ flex: 1 }}><label>Month</label><input type="month" value={ym} onChange={(e) => setYm(e.target.value)} /></div>
+          <div className="fs-h"><span>2</span> Month &amp; pay</div>
+          <div className="row fs-row">
+            <MonthPicker label="Month" value={ym} onChange={setYm} />
             <div className="field" style={{ flex: 1 }}><label>Currency</label><select value={currency} onChange={(e) => setCurrency(e.target.value)}>{CURRENCIES.map((c) => <option key={c}>{c}</option>)}</select></div>
           </div>
-          <div className="row">
+          <div className="row fs-row">
             <AmountInput label="Daily wage" value={rate} onChange={setRate} max={MAX_AMOUNT_MAJOR} />
             <AmountInput label="One advance token is worth" value={adv} onChange={setAdv} max={MAX_AMOUNT_MAJOR} />
           </div>
           <div className="field"><label>Balance brought forward (optional)</label><input type="number" step="any" min={-MAX_CARRY_MAJOR} max={MAX_CARRY_MAJOR} value={carry} onChange={(e) => setCarry(Math.max(-MAX_CARRY_MAJOR, Math.min(MAX_CARRY_MAJOR, Number(e.target.value) || 0)))} />
             <div className="small muted sans">Negative = the worker still owes this from last month and it is deducted. Positive = the employer still owes it. It is printed on the card and locked into its code, so it cannot be changed later.</div></div>
-          <label className="row sans" style={{ margin: '4px 0 2px', gap: 8, fontSize: '0.92rem', color: 'var(--ink)' }}>
-            <input type="checkbox" checked={paired} disabled={reprinting} onChange={(e) => setPaired(e.target.checked)} /> Pairing code <span className="pill ok">recommended</span>
+          <div className="fs-h"><span>3</span> Options</div>
+          <label className={`switch ${paired ? 'on' : ''} ${reprinting ? 'dis' : ''}`}>
+            <input type="checkbox" checked={paired} disabled={reprinting} onChange={(e) => setPaired(e.target.checked)} />
+            <i aria-hidden />
+            <span><b>Pairing code</b> <em className="pill ok">recommended</em>
+              <small>{reprinting ? 'A reprint keeps the card exactly as it was.' : 'The QR carries a secret that must match the other half, so a sloppy cut never fails a genuine pair and the other half cannot be faked.'}</small>
+            </span>
           </label>
-          <div className="small muted sans" style={{ marginBottom: 12 }}>
-            {reprinting ? 'A reprint keeps the card exactly as it was.' : 'The QR carries a secret that must match the other half. A sloppy cut can then never make a genuine pair fail, and nobody can fabricate the other half from their own.'}
-          </div>
           <div className="field"><label>Language on the card and slip</label>
             <select value={lang} onChange={(e) => setLang(e.target.value)}>{LANGS.map((l) => <option key={l.code} value={l.code}>{l.name}</option>)}</select>
           </div>
-          <p className="small muted sans">Advances: a worker takes cash early → punch one of the 10 token spots on both halves. Each is worth the amount above.</p>
-          <div className="row">
-            <button className="primary" onClick={() => { persist(); printArea(); }}>🖨 Print &amp; save</button>
+          <p className="note-line sans">💡 Advances: a worker takes cash early → punch one of the 10 token spots on both halves. Each is worth the token amount above.</p>
+          <div className="actionbar">
+            <button className="primary big" onClick={() => { persist(); printArea(); }}>🖨 Print &amp; save</button>
             <button onClick={() => { persist(); toast(editing ? 'Revised card saved (it replaces the old one)' : 'Card saved in this browser'); }}>💾 Save only</button>
             <button onClick={() => download(`tally-${spec.id}.svg`, svg, 'image/svg+xml')}>⬇ SVG</button>
             <button onClick={async () => { persist(); const b = await sheetPdf(svg); const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = `tally-${spec.id}.pdf`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 3000); }}>⬇ PDF (A4)</button>

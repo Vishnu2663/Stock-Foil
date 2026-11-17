@@ -109,3 +109,51 @@ export function initTilt() {
   }, { passive: true });
   document.addEventListener('pointerleave', () => { reset(cur); cur = null; }, true);
 }
+
+/**
+ * Scroll reveal: cards, steps and previews rise into view as they enter the screen, one after
+ * another. Uses the individual `translate`/`scale` properties so it never fights the pointer
+ * tilt, which owns `transform`. Elements added later (a scan result, say) are picked up too.
+ */
+export function initReveal(): () => void {
+  if (reducedMotion() || typeof IntersectionObserver === 'undefined') return () => undefined;
+  const io = new IntersectionObserver((entries) => {
+    for (const e of entries) {
+      if (e.isIntersecting) {
+        (e.target as HTMLElement).classList.add('in');
+        io.unobserve(e.target);
+      }
+    }
+  }, { threshold: 0.08, rootMargin: '0px 0px -5% 0px' });
+  let pending = 0;
+  const scan = () => {
+    pending = 0;
+    const els = document.querySelectorAll<HTMLElement>('main.wrap .card:not(.rv), main.wrap .step:not(.rv), main.wrap .sheetprev:not(.rv), main.wrap .flip:not(.rv)');
+    let k = 0;
+    els.forEach((el) => {
+      el.classList.add('rv');
+      el.style.setProperty('--d', String(Math.min(k++, 8)));
+      io.observe(el);
+    });
+  };
+  const mo = new MutationObserver(() => { if (!pending) pending = requestAnimationFrame(scan); });
+  mo.observe(document.getElementById('root') ?? document.body, { childList: true, subtree: true });
+  scan();
+  return () => { mo.disconnect(); io.disconnect(); if (pending) cancelAnimationFrame(pending); };
+}
+
+/** Material-style ripple on every button press. */
+export function initRipple() {
+  if (reducedMotion()) return;
+  document.addEventListener('pointerdown', (e) => {
+    const b = (e.target as HTMLElement | null)?.closest?.('button, .btn') as HTMLElement | null;
+    if (!b || (b as HTMLButtonElement).disabled) return;
+    const r = b.getBoundingClientRect();
+    const size = Math.max(r.width, r.height) * 2;
+    const s = document.createElement('span');
+    s.className = 'ripple';
+    s.style.cssText = `left:${e.clientX - r.left - size / 2}px;top:${e.clientY - r.top - size / 2}px;width:${size}px;height:${size}px`;
+    b.appendChild(s);
+    setTimeout(() => s.remove(), 650);
+  }, { passive: true });
+}

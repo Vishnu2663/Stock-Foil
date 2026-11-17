@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
-import { speak, speechSupported, stopSpeaking } from '../../ai/speech';
+import { hasVoiceFor, speak, speechSupported, stopSpeaking } from '../../ai/speech';
 import { newCardSpec } from '../../core/card';
 import { newPairing } from '../../core/pairing';
+import { formatVerdict, STORY_LANGS, storyPack, type VerdictKind } from '../../i18n/story';
 import { verifyPair } from '../../vision/pair';
 import type { Captured } from '../components/Results';
 import { rgbaToCanvas } from '../imageIO';
@@ -60,34 +61,74 @@ function Embers({ on }: { on: boolean }) {
   return <canvas ref={ref} aria-hidden style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none', borderRadius: 10 }} />;
 }
 
+/** One flame tongue: a teardrop that leans, with a pointed top. */
+const tongue = (cx: number, base: number, w: number, h: number, lean: number) =>
+  `M${cx - w},${base} C${cx - w * 1.05},${base - h * 0.35} ${cx - w * 0.35 + lean * 0.4},${base - h * 0.6} ${cx + lean},${base - h} C${cx + w * 0.3 + lean * 0.5},${base - h * 0.58} ${cx + w * 1.05},${base - h * 0.32} ${cx + w},${base}Z`;
+const TONGUES = [
+  [128, 62, 70, -6], [168, 50, 104, 5], [208, 58, 86, -4], [248, 66, 128, 3], [292, 54, 96, -5], [334, 60, 112, 6], [372, 48, 78, -3], [404, 38, 58, 4],
+];
+
 function Fire() {
+  const calm = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const base = 238;
   return (
     <svg viewBox="0 0 520 260" className="haunt-art" role="img" aria-label="Tally sticks burning in a furnace beneath the Houses of Parliament">
       <defs>
-        <radialGradient id="glow" cx="50%" cy="100%" r="80%"><stop offset="0" stopColor="#ff9a2e" stopOpacity=".9" /><stop offset="1" stopColor="#ff4d00" stopOpacity="0" /></radialGradient>
+        <radialGradient id="glow" cx="50%" cy="100%" r="80%"><stop offset="0" stopColor="#ff9a2e" stopOpacity=".75" /><stop offset=".5" stopColor="#c2310a" stopOpacity=".3" /><stop offset="1" stopColor="#ff4d00" stopOpacity="0" /></radialGradient>
+        <linearGradient id="fOuter" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stopColor="#ff5a0a" /><stop offset=".55" stopColor="#d12c05" stopOpacity=".9" /><stop offset="1" stopColor="#7a0f02" stopOpacity="0" /></linearGradient>
+        <linearGradient id="fMid" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stopColor="#ffb02e" /><stop offset=".6" stopColor="#ff7a14" stopOpacity=".95" /><stop offset="1" stopColor="#ff4d00" stopOpacity="0" /></linearGradient>
+        <linearGradient id="fCore" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stopColor="#fffbe0" /><stop offset=".5" stopColor="#ffe27a" stopOpacity=".95" /><stop offset="1" stopColor="#ffc247" stopOpacity="0" /></linearGradient>
+        <linearGradient id="coal" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#ff7a18" /><stop offset=".4" stopColor="#a8280a" /><stop offset="1" stopColor="#2a0a05" /></linearGradient>
+        {/* turns clean teardrops into licking, ragged flames; the noise drifts upward over time */}
+        <filter id="lick" x="-20%" y="-40%" width="140%" height="160%" colorInterpolationFilters="sRGB">
+          <feTurbulence type="fractalNoise" baseFrequency="0.018 0.075" numOctaves="3" seed="4" result="n">
+            {!calm && <animate attributeName="baseFrequency" dur="5s" values="0.018 0.075;0.026 0.11;0.018 0.075" repeatCount="indefinite" />}
+            {!calm && <animate attributeName="seed" dur="0.9s" values="2;5;3;7;4;6;2" calcMode="discrete" repeatCount="indefinite" />}
+          </feTurbulence>
+          <feDisplacementMap in="SourceGraphic" in2="n" scale="26" xChannelSelector="R" yChannelSelector="G" result="d" />
+          <feGaussianBlur in="d" stdDeviation="1.6" />
+        </filter>
+        <filter id="soft"><feGaussianBlur stdDeviation="7" /></filter>
+        <filter id="haze" x="-10%" y="-10%" width="120%" height="120%"><feTurbulence type="fractalNoise" baseFrequency="0.01 0.05" numOctaves="2" seed="9"><animate attributeName="baseFrequency" dur="6s" values="0.01 0.05;0.014 0.07;0.01 0.05" repeatCount="indefinite" /></feTurbulence><feDisplacementMap in="SourceGraphic" scale="6" /></filter>
       </defs>
-      <rect width="520" height="260" fill="#14080a" />
-      <ellipse cx="260" cy="260" rx="300" ry="170" fill="url(#glow)" className="flick" />
-      {/* Parliament silhouette */}
-      <g fill="#05030a" opacity=".95">
-        <rect x="90" y="130" width="340" height="80" />
-        <rect x="120" y="90" width="28" height="60" /><polygon points="120,90 134,60 148,90" />
-        <rect x="372" y="70" width="34" height="90" /><polygon points="372,70 389,32 406,70" />
-        <rect x="250" y="110" width="22" height="40" /><polygon points="250,110 261,86 272,110" />
-        {Array.from({ length: 14 }, (_, i) => <rect key={i} x={104 + i * 24} y={150} width="8" height="14" fill="#ffb347" opacity={i % 3 === 0 ? 0.9 : 0.35} className="flick2" />)}
+      <rect width="520" height="260" fill="#12060a" />
+      <ellipse cx="260" cy="262" rx="320" ry="190" fill="url(#glow)" className="flick" />
+      {/* Parliament silhouette, seen through the heat */}
+      <g filter={calm ? undefined : 'url(#haze)'}>
+        <g fill="#05030a" opacity=".96">
+          <rect x="90" y="130" width="340" height="80" />
+          <rect x="120" y="90" width="28" height="60" /><polygon points="120,90 134,60 148,90" />
+          <rect x="372" y="70" width="34" height="90" /><polygon points="372,70 389,32 406,70" />
+          <rect x="250" y="110" width="22" height="40" /><polygon points="250,110 261,86 272,110" />
+          {Array.from({ length: 14 }, (_, i) => <rect key={i} x={104 + i * 24} y={150} width="8" height="14" fill="#ffb347" opacity={i % 3 === 0 ? 0.85 : 0.3} className="flick2" style={{ animationDelay: `${(i * 0.37) % 1.3}s` }} />)}
+        </g>
       </g>
-      {/* flames */}
-      {[0, 1, 2, 3, 4, 5, 6].map((i) => (
-        <path key={i} className="flame" style={{ animationDelay: `${i * 0.18}s`, transformOrigin: `${130 + i * 42}px 232px` }} d={`M${112 + i * 42},232 Q${120 + i * 42},170 ${130 + i * 42},150 Q${140 + i * 42},180 ${150 + i * 42},232Z`} fill={i % 2 ? '#ff7a18' : '#ffb347'} />
-      ))}
-      {/* tally sticks sliding into the fire */}
+      {/* furnace glow behind the flames */}
+      <g filter="url(#soft)" opacity=".85" className="flick">
+        {TONGUES.map(([cx, w, h, lean], i) => <path key={i} d={tongue(cx, base, w * 1.1, h * 0.9, lean)} fill="#ff5a0a" />)}
+      </g>
+      {/* three flame layers: red edge, orange body, white-hot core */}
+      <g filter="url(#lick)" style={{ mixBlendMode: 'screen' }}>
+        {TONGUES.map(([cx, w, h, lean], i) => (
+          <g key={i} className="tongue" style={{ animationDelay: `${(i * 0.23) % 1.1}s`, animationDuration: `${0.9 + (i % 3) * 0.22}s`, transformOrigin: `${cx}px ${base}px` }}>
+            <path d={tongue(cx, base, w, h, lean)} fill="url(#fOuter)" />
+            <path d={tongue(cx, base, w * 0.72, h * 0.78, lean * 0.7)} fill="url(#fMid)" />
+            <path d={tongue(cx, base, w * 0.38, h * 0.5, lean * 0.4)} fill="url(#fCore)" />
+          </g>
+        ))}
+      </g>
+      {/* tally sticks sliding in, glowing and charring as they reach the fire */}
       {[0, 1, 2].map((i) => (
         <g key={i} className="stick" style={{ animationDelay: `${i * 1.1}s` }}>
           <rect x="30" y={196 + i * 8} width="120" height="9" rx="2" fill="#c9a66b" />
           {[0, 1, 2, 3, 4, 5].map((k) => <rect key={k} x={44 + k * 17} y={196 + i * 8} width="3" height="9" fill="#6b4a1f" />)}
+          <rect className="stick-burn" x="30" y={196 + i * 8} width="120" height="9" rx="2" fill="#ff7a18" style={{ animationDelay: `${i * 1.1}s` }} />
         </g>
       ))}
-      <text x="260" y="248" textAnchor="middle" fontSize="13" fill="#ffe2b8" fontFamily="system-ui" opacity=".9">October 1834 · the furnaces under the House of Lords</text>
+      {/* coal bed */}
+      <rect x="86" y={base - 2} width="348" height="26" rx="10" fill="url(#coal)" />
+      <g className="flick2">{Array.from({ length: 16 }, (_, i) => <ellipse key={i} cx={104 + i * 21 + (i % 2) * 5} cy={base + 6 + (i % 3) * 4} rx={7 + (i % 3) * 2} ry="2.6" fill={i % 2 ? '#ffb347' : '#ff7a18'} opacity={0.55 + (i % 3) * 0.15} style={{ animationDelay: `${(i * 0.21) % 1.2}s` }} />)}</g>
+      <text x="260" y="256" textAnchor="middle" fontSize="12.5" fill="#ffe2b8" fontFamily="system-ui" opacity=".9">October 1834 · the furnaces under the House of Lords</text>
     </svg>
   );
 }
@@ -114,18 +155,13 @@ function CardArt() {
 }
 
 type Scenario = 'claim' | 'sneaky' | 'sloppy' | 'forged';
-interface Scene { title: string; short: string; text: string; art: 'fire' | 'split' | 'card' | 'scan' | 'end'; scenario?: Scenario }
+interface Scene { art: 'fire' | 'split' | 'card' | 'scan' | 'end'; scenario?: Scenario }
 
+/** The nine chapters' structure. The words (title, label, text) come from the chosen language pack. */
 const SCENES: Scene[] = [
-  { title: '1834 · The fire', short: 'The fire', art: 'fire', text: 'For seven hundred years England kept its accounts on notched hazel sticks. In October 1834 the old sticks were fed to the furnaces beneath the House of Lords. The chimneys caught fire, and the Houses of Parliament burned down.' },
-  { title: 'Why a stick? It was split.', short: 'The split', art: 'split', text: 'A tally was split lengthwise. The creditor kept the stock, the debtor kept the foil. To cheat you had to match a grain nobody can see. The two halves were the proof.' },
-  { title: 'It comes back from the dead', short: 'Resurrection', art: 'card', text: 'Today millions of workers are still paid by the day, in cash, with nothing in writing. Stock and Foil resurrects the tally: a card cut in two along a wavy line. The worker keeps one half, the employer the other, and every evening both are punched together.' },
-  { title: 'The claim', short: 'The claim', art: 'scan', scenario: 'claim', text: 'Contractor: you only worked four days. Ramesh has no phone, no payslip, no witness. But his half has five holes, and the scanner confirms the pair is genuine: both halves carry matching secret codes.' },
-  { title: 'The sneaky hole', short: 'Extra hole', art: 'scan', scenario: 'sneaky', text: 'Someone punches a sixth hole into one half only. The other half never got it. The scanner compares both halves and shows the hole that exists on one side alone. It is never paid.' },
-  { title: 'A sloppy cut? No problem.', short: 'Sloppy cut', art: 'scan', scenario: 'sloppy', text: 'Hand cutting is never perfect. Here the foil was cut along a completely different line, so the wavy edges do not fit. Old paper tallies would have been rejected. But the QR codes carry a pairing secret, so the pair is still proven genuine.' },
-  { title: 'The forgery that fits perfectly', short: 'The forgery', art: 'scan', scenario: 'forged', text: 'Now someone prints a fake foil using everything on the worker’s half: the name, the numbers, even the same cut. The edges fit perfectly. But the secret in the QR cannot be copied from one half to invent the other, so the forgery fails, and burns.' },
-  { title: 'Paid once. Only once.', short: 'Paid', art: 'end', text: 'At payday the agreed days become a pay slip, the money is recorded in a tamper-evident ledger, and the card cannot be paid twice. A balance owed carries forward to next month, locked into the next card.' },
-  { title: 'Back from the dead', short: 'The end', art: 'end', text: 'The tally sticks that burned Parliament have come back from the dead. Paper is the security. Both sides hold the same record, and nobody has to trust an app, a server, or each other.' },
+  { art: 'fire' }, { art: 'split' }, { art: 'card' },
+  { art: 'scan', scenario: 'claim' }, { art: 'scan', scenario: 'sneaky' }, { art: 'scan', scenario: 'sloppy' }, { art: 'scan', scenario: 'forged' },
+  { art: 'end' }, { art: 'end' },
 ];
 
 function Photos({ run, burn }: { run: Run; burn: boolean }) {
@@ -153,17 +189,35 @@ export function Story({ go }: { go: (r: string) => void }) {
   const [play, setPlay] = useState(false);
   const [voice, setVoice] = useState(false);
   const [run, setRun] = useState<Run>(null);
-  const [verdictText, setVerdictText] = useState('');
+  const [verdict, setVerdict] = useState<{ kind: VerdictKind; n?: number; days?: string } | null>(null);
+  const [lang, setLangState] = useState(() => {
+    try { const v = localStorage.getItem('sf.storylang'); if (v && STORY_LANGS.some((p) => p.code === v)) return v; } catch { /* ignore */ }
+    return STORY_LANGS.some((p) => p.code === settings.lang) ? settings.lang : 'en';
+  });
+  const [voicesReady, setVoicesReady] = useState(0);
+  const setLang = (c: string) => { setLangState(c); try { localStorage.setItem('sf.storylang', c); } catch { /* ignore */ } };
   const [burn, setBurn] = useState(false);
   const token = useRef(0);
-  const sc = SCENES[i];
+  const pack = storyPack(lang);
+  const sc = { ...SCENES[i], title: pack.title[i], short: pack.short[i], text: pack.text[i] };
+  const verdictText = verdict ? formatVerdict(pack, verdict.kind, verdict) : '';
+  const voiceOk = !speechSupported() || voicesReady === 0 || hasVoiceFor(pack.speech);
   const last = i === SCENES.length - 1;
+
+  // voices arrive asynchronously in most browsers
+  useEffect(() => {
+    if (!speechSupported()) return;
+    const on = () => setVoicesReady(speechSynthesis.getVoices().length);
+    on();
+    speechSynthesis.addEventListener?.('voiceschanged', on);
+    return () => speechSynthesis.removeEventListener?.('voiceschanged', on);
+  }, []);
 
   // run the real scanner when a scanning chapter opens
   useEffect(() => {
     const my = ++token.current;
     setBurn(false);
-    setVerdictText('');
+    setVerdict(null);
     setRun(null);
     if (sc.art !== 'scan') return;
     const k = sc.scenario!;
@@ -183,24 +237,29 @@ export function Story({ go }: { go: (r: string) => void }) {
       setRun(r);
       const v = verifyPair(r.stock.half, r.foil.half);
       const a = v.pay.agreed;
-      setVerdictText(
-        v.verdict === 'pair-mismatch' ? (v.pairing === 'failed' ? '⛔ The pairing codes do not fit. The cut matched perfectly, but the secret could not be copied.' : '⛔ These halves do NOT belong together.')
-          : v.verdict === 'genuine-disputed' ? `⚠ Genuine pair, but day ${[...v.cmp.stockOnlyDays, ...v.cmp.foilOnlyDays].join(', ')} is on one half only. Agreed: ${a.days} days.`
-            : v.pairing === 'verified' && v.edge.verdict !== 'match' ? `✅ Genuine pair, even though the cut edges do not fit: the pairing code proves it. ${a.days} days agree.`
-              : `✅ Genuine pair, pairing code verified. ${a.days} days agree on both halves.`,
+      setVerdict(
+        v.verdict === 'pair-mismatch' ? { kind: v.pairing === 'failed' ? 'mismatchPairing' : 'mismatch' }
+          : v.verdict === 'genuine-disputed' ? { kind: 'disputed', days: [...v.cmp.stockOnlyDays, ...v.cmp.foilOnlyDays].join(', '), n: a.days }
+            : v.pairing === 'verified' && v.edge.verdict !== 'match' ? { kind: 'sloppy', n: a.days }
+              : { kind: 'ok', n: a.days },
       );
       if (v.verdict === 'pair-mismatch') setTimeout(() => my === token.current && setBurn(true), 900);
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [i]);
 
-  // narration
+  // narration in the chosen language
   useEffect(() => {
     stopSpeaking();
-    if (voice) speak(`${sc.title}. ${sc.text}`, 'en', settings.speakRate);
+    if (voice) speak(`${sc.title}. ${sc.text}`, lang, settings.speakRate, { tag: pack.speech });
     return () => stopSpeaking();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [i, voice]);
+  }, [i, voice, lang]);
+  // the scanner's verdict is read out after the chapter text
+  useEffect(() => {
+    if (voice && verdictText) speak(verdictText, lang, settings.speakRate, { tag: pack.speech, queue: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [verdict, voice, lang]);
 
   // autoplay
   useEffect(() => {
@@ -225,7 +284,7 @@ export function Story({ go }: { go: (r: string) => void }) {
   return (
     <div className="haunt story-page">
       <div className="kicker" style={{ color: '#ffb37a' }}>🎃 Story · chapter {i + 1} of {SCENES.length}</div>
-      <h1 style={{ fontSize: 'clamp(1.7rem, 4vw, 2.4rem)', color: '#fff3dc' }}>{sc.title}</h1>
+      <h1 dir={pack.rtl ? 'rtl' : 'ltr'} lang={pack.code} style={{ fontSize: 'clamp(1.7rem, 4vw, 2.4rem)', color: '#fff3dc' }}>{sc.title}</h1>
       <div className="story-progress" role="progressbar" aria-valuemin={1} aria-valuemax={SCENES.length} aria-valuenow={i + 1}><i style={{ width: `${((i + 1) / SCENES.length) * 100}%` }} /></div>
 
       <div className="card haunt-card" key={i}>
@@ -237,8 +296,8 @@ export function Story({ go }: { go: (r: string) => void }) {
           {sc.art === 'scan' && <Photos run={run} burn={burn} />}
           <Embers on={sc.art === 'fire' || sc.art === 'end'} />
         </div>
-        <p style={{ color: '#ffe9c7', fontSize: '1.15rem', marginTop: 12 }}>{sc.text}</p>
-        {verdictText && <p className="verdict-line" style={{ color: burn ? '#ff9a6a' : '#ffe9c7' }}>{verdictText}</p>}
+        <p dir={pack.rtl ? 'rtl' : 'ltr'} lang={pack.code} style={{ color: '#ffe9c7', fontSize: '1.15rem', marginTop: 12 }}>{sc.text}</p>
+        {verdictText && <p dir={pack.rtl ? 'rtl' : 'ltr'} lang={pack.code} className="verdict-line" style={{ color: burn ? '#ff9a6a' : '#ffe9c7' }}>{verdictText}</p>}
         {last && (
           <div className="row" style={{ marginTop: 10 }}>
             <button className="primary" onClick={() => go('issue')}>＋ Make a card</button>
@@ -248,16 +307,34 @@ export function Story({ go }: { go: (r: string) => void }) {
         )}
       </div>
 
-      <div className="row" style={{ marginTop: 12 }}>
-        <button onClick={() => setI(Math.max(0, i - 1))} disabled={i === 0}>◀ Back</button>
-        <button className="primary" onClick={() => { if (last) { setI(0); setPlay(true); } else setPlay((p) => !p); }}>{play ? '⏸ Pause' : last ? '↺ Replay' : '▶ Autoplay'}</button>
-        <button onClick={() => setI(Math.min(SCENES.length - 1, i + 1))} disabled={last}>Next ▶</button>
-        {speechSupported() && <label className="row sans" style={{ margin: 0, gap: 6, color: '#ffe2b8' }}><input type="checkbox" checked={voice} onChange={(e) => setVoice(e.target.checked)} /> Narrate</label>}
+      <div className="story-dock">
+        <div className="transport" role="group" aria-label="Playback">
+          <button className="t-side" onClick={() => setI(Math.max(0, i - 1))} disabled={i === 0} aria-label="Previous chapter"><span aria-hidden>◀</span><em>Back</em></button>
+          <button className="t-play" onClick={() => { if (last) { setI(0); setPlay(true); } else setPlay((p) => !p); }} aria-label={play ? 'Pause' : last ? 'Replay' : 'Autoplay'}>
+            <span aria-hidden>{play ? '⏸' : last ? '↺' : '▶'}</span><em>{play ? 'Pause' : last ? 'Replay' : 'Autoplay'}</em>
+          </button>
+          <button className="t-side" onClick={() => setI(Math.min(SCENES.length - 1, i + 1))} disabled={last} aria-label="Next chapter"><em>Next</em><span aria-hidden>▶</span></button>
+        </div>
+        <div className="dock-opts">
+          {speechSupported() && (
+            <label className={`switch mini ${voice ? 'on' : ''}`}>
+              <input type="checkbox" checked={voice} onChange={(e) => setVoice(e.target.checked)} /><i aria-hidden /><span>🔊 Narrate</span>
+            </label>
+          )}
+          <label className="lang-chip story-lang">
+            <span aria-hidden>🌐</span>
+            <select value={lang} onChange={(e) => setLang(e.target.value)} aria-label="Story language">
+              {STORY_LANGS.map((p) => <option key={p.code} value={p.code}>{p.name}{voicesReady > 0 && speechSupported() && !hasVoiceFor(p.speech) ? ' · text only' : ''}</option>)}
+            </select>
+          </label>
+        </div>
       </div>
+      {voice && !voiceOk && <p className="small sans" style={{ color: '#ffb37a', margin: '8px 0 0' }}>This device has no {pack.name} voice installed, so the story is shown but not spoken. Pick another language, or add a {pack.name} voice in your system’s speech settings.</p>}
+      {lang !== 'en' && <p className="small sans" style={{ color: '#d9c4a0', margin: '6px 0 0' }}>Translations were drafted with AI and should be checked by a native speaker.</p>}
       <nav className="story-dots" aria-label="Chapters">
-        {SCENES.map((s2, k) => (
-          <button key={k} className={`${k === i ? 'on' : ''} ${k < i ? 'seen' : ''}`} onClick={() => { setI(k); setPlay(false); }} aria-label={`Chapter ${k + 1}: ${s2.short}`} aria-current={k === i ? 'step' : undefined}>
-            <span className="dot" /><span className="lbl">{s2.short}</span>
+        {SCENES.map((_s, k) => (
+          <button key={k} className={`${k === i ? 'on' : ''} ${k < i ? 'seen' : ''}`} onClick={() => { setI(k); setPlay(false); }} aria-label={`Chapter ${k + 1}: ${pack.short[k]}`} aria-current={k === i ? 'step' : undefined}>
+            <span className="dot">{k < i ? '✓' : k + 1}</span><span className="lbl">{pack.short[k]}</span>
           </button>
         ))}
       </nav>

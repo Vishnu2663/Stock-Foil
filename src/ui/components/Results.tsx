@@ -77,10 +77,13 @@ export function Results({ stock, foil, onReset }: { stock: Captured; foil: Captu
   const net = r.pay.agreed.netMinor;
   const carry = r.pay.agreed.carryMinor;
   const nextMonth = spec.month === 12 ? { year: spec.year + 1, month: 1 } : { year: spec.year, month: spec.month + 1 };
-  const markPaid = async () => {
-    await addReceipt({ cardId: spec.id, month: monthKey, worker: spec.worker, employer: spec.employer, verdict: 'paid', agreedDays: [], stockOnlyDays: [], foilOnlyDays: [], agreedAdv: 0, netMinor: payable(net), disputedMinor: r.pay.disputedMinor, currency: spec.currency, ...(rateChange ? { rateChange } : {}) });
+  const blocked = r.verdict === 'pair-mismatch' || unreliable;
+  /** "Paid" or "Yet to pay": saves this scan to History (if not already) and then records the status */
+  const record = async (kind: 'paid' | 'unpaid') => {
+    if (!saved) await save(true);
+    await addReceipt({ cardId: spec.id, month: monthKey, worker: spec.worker, employer: spec.employer, verdict: kind, agreedDays: [], stockOnlyDays: [], foilOnlyDays: [], agreedAdv: 0, netMinor: payable(net), disputedMinor: r.pay.disputedMinor, currency: spec.currency, ...(rateChange ? { rateChange } : {}) });
     setPaidTick((n) => n + 1);
-    toast(`Recorded: ${formatMoney(payable(net), spec.currency, lang)} paid`);
+    toast(kind === 'paid' ? `💰 Paid ${formatMoney(payable(net), spec.currency, lang)}. Saved to History.` : `⏳ Yet to pay ${formatMoney(payable(net), spec.currency, lang)}. Saved to History.`);
   };
   const totalShown = useCountUp(r.pay.agreed.netMinor);
   const nDays = daysInMonth(spec.year, spec.month);
@@ -101,7 +104,7 @@ export function Results({ stock, foil, onReset }: { stock: Captured; foil: Captu
     setExplain(await explainPay(settings, r, lang));
     setBusy(false);
   };
-  const save = async () => {
+  const save = async (quiet = false) => {
     await addReceipt({
       cardId: spec.id,
       month: `${spec.year}-${String(spec.month).padStart(2, '0')}`,
@@ -118,7 +121,7 @@ export function Results({ stock, foil, onReset }: { stock: Captured; foil: Captu
       ...(rateChange ? { rateChange } : {}),
     });
     setSaved(true);
-    toast('Saved to the tamper-evident ledger');
+    if (!quiet) toast('Saved to History (tamper-evident ledger)');
   };
 
   const selStatus = sel ? r.cmp.dayStatus[sel - 1] : null;
@@ -260,6 +263,14 @@ export function Results({ stock, foil, onReset }: { stock: Captured; foil: Captu
             {status.changed && <div style={{ color: 'var(--bad)' }}>⚠ These records now show {m(payable(net))}, which differs from the {m(status.amountMinor!)} paid. Check before paying anything more.</div>}
           </div>
         )}
+        {status.pending && (
+          <div className="card flat sans no-print" style={{ marginTop: 10, borderColor: 'var(--amber)' }}>
+            <b>⏳ Yet to pay</b>: {m(status.pendingAmountMinor ?? payable(net))} is still owed for this month. It is saved in <a href="#/history">History</a>.
+            <div className="row" style={{ marginTop: 8 }}>
+              <button className="sm primary" onClick={() => record('paid')} disabled={blocked}>💰 Mark paid now</button>
+            </div>
+          </div>
+        )}
         {net < 0 && !unreliable && (
           <div className="card flat sans no-print" style={{ marginTop: 10 }}>
             <b>Balance to carry forward: −{m(-net)}</b> (the worker has taken more than earned). Pay nothing now; carry it onto next month’s card so it is not forgotten or changed.
@@ -271,8 +282,9 @@ export function Results({ stock, foil, onReset }: { stock: Captured; foil: Captu
         <div className="row no-print" style={{ marginTop: 10 }}>
           <button className="primary" disabled={unreliable} onClick={() => setShowSlip((s) => !s)}>🧾 {showSlip ? 'Hide' : 'Show'} pay slip</button>
           <button onClick={doExplain} disabled={busy || settings.aiProvider === 'off'}>{busy ? <span className="spin" /> : '🤖'} Explain simply</button>
-          <button onClick={markPaid} disabled={status.paid || r.verdict === 'pair-mismatch' || unreliable} title="Record that the agreed amount was handed over. Rescanning this card later will warn that it is already paid.">{status.paid ? '💰 Paid' : '💰 Mark as paid'}</button>
-          <button onClick={save} disabled={saved || r.verdict === 'pair-mismatch' || unreliable}>{saved ? '✓ Saved' : '📒 Save to ledger'}</button>
+          <button className="primary" onClick={() => record('paid')} disabled={status.paid || blocked} title="The money was handed over. Saves this scan to History as Paid. Paid is final: this card can never be paid twice.">{status.paid ? '💰 Paid ✓' : '💰 Paid'}</button>
+          <button onClick={() => record('unpaid')} disabled={status.paid || status.pending || blocked} title="Not paid yet. Saves this scan to History as Yet to pay, so it is not forgotten; you can mark it paid later.">{status.pending ? '⏳ Yet to pay ✓' : '⏳ Yet to pay'}</button>
+          <button className="ghost" onClick={() => save()} disabled={saved || blocked} title="Save the scan to History without a payment status">{saved ? '✓ In History' : '📒 Save only'}</button>
           <button onClick={() => { addCrew({ cardId: spec.id, month: `${spec.year}-${String(spec.month).padStart(2, '0')}`, worker: spec.worker, employer: spec.employer, verdict: r.verdict, agreedDays: r.pay.agreed.days, advances: r.pay.agreed.advances, netMinor: r.pay.agreed.netMinor, disputedMinor: r.pay.disputedMinor, currency: spec.currency }); toast('Added to crew payroll'); }} disabled={r.verdict === 'pair-mismatch' || unreliable}>➕ Add to crew payroll</button>
           <button onClick={() => { downloadPhoto(stock.photo, `stock-${spec.id}.png`); setTimeout(() => downloadPhoto(foil.photo, `foil-${spec.id}.png`), 400); }} title="Save both photos as PNG so you can upload them on the Payday scan page, or on another device">⬇ Save photos</button>
           <button className="ghost" onClick={onReset}>Scan another</button>

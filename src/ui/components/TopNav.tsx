@@ -24,6 +24,9 @@ export function TopNav({ route, primary, groups, settings }: { route: string; pr
   const [panel, setPanel] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const root = useRef<HTMLElement>(null);
+  const navRef = useRef<HTMLElement>(null);
+  const [prog, setProg] = useState(0);
+  const [pill, setPill] = useState<{ x: number; y: number; w: number; h: number; tone: 'red' | 'accent'; away: boolean } | null>(null);
 
   useEffect(() => {
     setOpenMenu(null);
@@ -55,6 +58,35 @@ export function TopNav({ route, primary, groups, settings }: { route: string; pr
     };
   }, []);
 
+  /** the nav items the gliding pill can sit under (not Settings, which has its own look) */
+  const pillItems = () => Array.from(navRef.current?.querySelectorAll<HTMLElement>(':scope > a:not(.settings-btn), :scope .dd-btn') ?? []);
+  const activeItem = () => pillItems().find((e) => e.classList.contains('on')) ?? null;
+  const placePill = (el: HTMLElement | null, away: boolean) => {
+    const nav = navRef.current;
+    if (!el || !nav || !window.matchMedia('(min-width: 1001px)').matches) { setPill(null); return; }
+    const n = nav.getBoundingClientRect();
+    const r = el.getBoundingClientRect();
+    setPill({ x: r.left - n.left, y: r.top - n.top, w: r.width, h: r.height, tone: el.classList.contains('accent') ? 'accent' : 'red', away });
+  };
+  // settle under the current page, and re-measure on resize / once fonts have loaded
+  useEffect(() => {
+    const settle = () => placePill(activeItem(), false);
+    const id = requestAnimationFrame(settle);
+    window.addEventListener('resize', settle);
+    document.fonts?.ready.then(settle).catch(() => undefined);
+    return () => { cancelAnimationFrame(id); window.removeEventListener('resize', settle); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [route]);
+  useEffect(() => {
+    const on = () => {
+      const h = document.documentElement.scrollHeight - window.innerHeight;
+      setProg(h > 0 ? Math.min(1, window.scrollY / h) : 0);
+    };
+    on();
+    window.addEventListener('scroll', on, { passive: true });
+    return () => window.removeEventListener('scroll', on);
+  }, [route]);
+
   /** Arrow-key navigation inside one dropdown. */
   const menuKeys = (e: React.KeyboardEvent<HTMLDivElement>) => {
     const box = e.currentTarget; // React clears currentTarget after the handler returns, so keep it
@@ -82,17 +114,33 @@ export function TopNav({ route, primary, groups, settings }: { route: string; pr
 
   return (
     <header className={`top ${scrolled ? 'scrolled' : ''}`} ref={root}>
+      <i className="scroll-progress" style={{ transform: `scaleX(${prog})` }} aria-hidden />
       <div className="in">
         <a className="brand" href="#/home" aria-label="Stock & Foil home">
           <svg viewBox="0 0 96 96" aria-hidden><rect width="96" height="96" rx="20" fill="#7a1f1f" /><path d="M14 40 Q30 28 48 40 T82 40 V20 H14Z" fill="#f4ead2" /><path d="M14 40 Q30 28 48 40 T82 40 V76 H14Z" fill="#e6d6ad" /><circle cx="30" cy="22" r="5" fill="#7a1f1f" /><circle cx="48" cy="22" r="5" fill="#7a1f1f" /><circle cx="66" cy="22" r="5" fill="#7a1f1f" /><circle cx="30" cy="58" r="5" fill="#7a1f1f" /><circle cx="48" cy="58" r="5" fill="#7a1f1f" /><circle cx="66" cy="58" r="5" fill="#7a1f1f" /></svg>
-          <span>Stock &amp; Foil</span>
+          <span className="wm" aria-hidden>
+            <b>Stock</b>
+            <svg className="wm-cut" viewBox="0 0 120 8" preserveAspectRatio="none"><path d="M0 4 Q10 0 20 4 T40 4 T60 4 T80 4 T100 4 T120 4" fill="none" stroke="currentColor" strokeWidth="1.4" strokeDasharray="4 3" strokeLinecap="round" /></svg>
+            <b>&amp; Foil</b>
+          </span>
         </a>
         <button className="burger" aria-expanded={panel} aria-controls="mainnav" aria-label="Menu" onClick={() => setPanel((p) => !p)}>
-          <span aria-hidden>{panel ? '✕' : '☰'}</span> <span className="burger-label">Menu</span>
+          <span className="bars" aria-hidden><i /><i /><i /></span> <span className="burger-label">Menu</span>
         </button>
-        <nav id="mainnav" aria-label="Main" className={panel ? 'open' : ''}>
+        <nav
+          id="mainnav"
+          ref={navRef}
+          aria-label="Main"
+          className={`${panel ? 'open' : ''} ${pill ? 'has-pill' : ''} ${pill?.away ? 'away' : ''}`}
+          onPointerOver={(e) => {
+            const it = (e.target as HTMLElement).closest<HTMLElement>('#mainnav > a:not(.settings-btn), #mainnav .dd-btn');
+            if (it && navRef.current?.contains(it)) placePill(it, it !== activeItem());
+          }}
+          onPointerLeave={() => placePill(activeItem(), false)}
+        >
+          {pill && <span className="nav-pill" data-tone={pill.tone} style={{ transform: `translate(${pill.x}px, ${pill.y}px)`, width: pill.w, height: pill.h }} aria-hidden />}
           {primary.map((i) => (
-            <a key={i.route} href={`#/${i.route}`} className={`${route === i.route ? 'on' : ''} ${i.accent ? 'accent' : ''}`} aria-current={route === i.route ? 'page' : undefined}>{i.label}</a>
+            <a key={i.route} href={`#/${i.route}`} className={`${route === i.route ? 'on' : ''} ${i.accent ? 'accent' : ''}`} aria-current={route === i.route ? 'page' : undefined}>{i.icon && <span className="ico" aria-hidden>{i.icon}</span>}{i.label}</a>
           ))}
           {groups.map((g) => {
             const active = g.items.some((i) => i.route === route);
