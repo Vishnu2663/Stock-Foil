@@ -82,6 +82,19 @@ let tiltReady = false;
  * Pointer tilt for any element carrying data-tilt: it leans towards the cursor and a soft
  * glare follows it. Event delegation on the document, so it works for anything rendered later.
  */
+let scrollReady = false;
+/** Pauses background motion while the page scrolls and resumes shortly after, on every device. */
+export function initScrollPause() {
+  if (scrollReady || typeof window === 'undefined') return;
+  scrollReady = true;
+  let st = 0;
+  window.addEventListener('scroll', () => {
+    document.body.classList.add('is-scrolling');
+    window.clearTimeout(st);
+    st = window.setTimeout(() => document.body.classList.remove('is-scrolling'), 140);
+  }, { passive: true });
+}
+
 export function initTilt() {
   if (tiltReady || typeof window === 'undefined' || reducedMotion() || !window.matchMedia('(hover: hover)').matches) return;
   tiltReady = true;
@@ -92,7 +105,14 @@ export function initTilt() {
     el.style.setProperty('--ry', '0deg');
     el.style.setProperty('--lift', '0px');
   };
-  document.addEventListener('pointermove', (e) => {
+  // one style write per frame, however fast the pointer moves
+  let pending: PointerEvent | null = null;
+  let scheduled = false;
+  const apply = () => {
+    scheduled = false;
+    const e = pending;
+    pending = null;
+    if (!e) return;
     const el = (e.target as HTMLElement | null)?.closest?.('[data-tilt]') as HTMLElement | null;
     if (cur && cur !== el) reset(cur);
     cur = el;
@@ -106,7 +126,12 @@ export function initTilt() {
     el.style.setProperty('--gx', `${(px * 100).toFixed(1)}%`);
     el.style.setProperty('--gy', `${(py * 100).toFixed(1)}%`);
     el.style.setProperty('--lift', '6px');
+  };
+  document.addEventListener('pointermove', (e) => {
+    pending = e;
+    if (!scheduled) { scheduled = true; requestAnimationFrame(apply); }
   }, { passive: true });
+
   document.addEventListener('pointerleave', () => { reset(cur); cur = null; }, true);
 }
 

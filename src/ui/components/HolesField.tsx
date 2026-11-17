@@ -21,7 +21,7 @@ export function HolesField() {
     const move = (e: PointerEvent) => { tx = e.clientX / innerWidth - 0.5; ty = e.clientY / innerHeight - 0.5; };
     const tick = (t: number) => {
       raf = requestAnimationFrame(tick);
-      if (document.hidden || t - last < 33) return;
+      if (document.hidden || document.body.classList.contains('is-scrolling') || t - last < 33) return;
       const dt = Math.min(0.1, (t - last) / 1000);
       last = t;
       mx += (tx - mx) * 0.06;

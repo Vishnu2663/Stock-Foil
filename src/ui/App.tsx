@@ -19,7 +19,7 @@ import { Punch } from './pages/Punch';
 import { Scan } from './pages/Scan';
 import { Settings } from './pages/Settings';
 import { TopNav } from './components/TopNav';
-import { initReveal, initRipple, initTilt } from './fx';
+import { initReveal, initRipple, initScrollPause, initTilt } from './fx';
 import { HolesField } from './components/HolesField';
 
 const ROUTES = ['home', 'issue', 'punch', 'scan', 'members', 'crew', 'income', 'calibrate', 'demo', 'story', 'lab', 'history', 'ledger', 'about', 'settings'] as const;
@@ -39,6 +39,7 @@ export function App() {
 
   useEffect(() => {
     initTilt();
+    initScrollPause();
     initRipple();
     return initReveal();
   }, []);
