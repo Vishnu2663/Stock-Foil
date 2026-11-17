@@ -859,3 +859,7 @@ table.hist td.empty { text-align: center; padding: 28px 12px; color: var(--ink-2
   .pc-top, .pc-bot, .pc-month, .pc-name, .pc-day, .pc-adv, .pc-hole, .pc-ring, .pc-stamp, .pc-paystamp, .pc-aura, .pc-sheen, .pc-ripple, .pc-spark, .pc.tone-bad, .pc-day .pc-cellbox { animation: none !important; }
   .pc-cut-glow { display: none; }
 }
+.dd:not(.wide) .dd-menu { width: 372px; }
+.dd-txt small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dd-txt { flex: 1; }
+@media (max-width: 1000px) { .dd:not(.wide) .dd-menu { width: auto; } .dd-txt small { white-space: normal; } }

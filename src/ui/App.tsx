@@ -82,8 +82,8 @@ export function App() {
   ];
   const groups = [
     { id: 'records', label: 'Records', items: [
-      { route: 'history', icon: '🕘', label: 'History', hint: 'Every payday scan, paid or yet to pay' },
-      { route: 'ledger', icon: '📒', label: t('navLedger'), hint: 'Receipts, paid status, cards' },
+      { route: 'history', icon: '🕘', label: 'History', hint: 'All scans: paid or yet to pay' },
+      { route: 'ledger', icon: '📒', label: t('navLedger'), hint: 'Receipts, saved cards, chain check' },
       { route: 'income', icon: '🧾', label: 'Income proof', hint: 'Certificate for a loan or rent' },
     ] },
     { id: 'more', label: 'More', items: [
