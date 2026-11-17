@@ -46,6 +46,12 @@ function score(v: SpeechSynthesisVoice, tag: string): number {
   return s;
 }
 
+/** 'natural' = neural / enhanced / premium / online voices; 'basic' = the plain offline voice that sounds robotic. */
+export function voiceQuality(v: SpeechSynthesisVoice): 'natural' | 'basic' {
+  const n = `${v.name} ${v.voiceURI}`.toLowerCase();
+  return /premium|enhanced|neural|natural|studio|wavenet|online|siri/.test(n) || /google/.test(n) || !v.localService ? 'natural' : 'basic';
+}
+
 /** Installed voices for a language, best first (own language only). */
 export function voicesFor(tag: string): SpeechSynthesisVoice[] {
   const b = base(tag);

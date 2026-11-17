@@ -730,3 +730,9 @@ table.hist td.empty { text-align: center; padding: 28px 12px; color: var(--ink-2
 .ovl-item.edge i { width: 7px; height: 7px; border: 0; background: #7c3aed; box-shadow: 9px 0 #7c3aed, -9px 0 #7c3aed; margin: 0 9px; }
 .ovl-n { margin-left: 8px; padding: 1px 8px; border-radius: 999px; font-style: normal; font-weight: 800; font-size: .76rem; background: var(--paper-2); color: var(--ink); }
 .ovl-legend > p { grid-column: 1 / -1; margin: 4px 0 0; padding-top: 8px; border-top: 1px solid var(--line); }
+
+.lang-chip.pace { gap: 8px; padding-right: 12px; }
+.lang-chip.pace input[type='range'] { width: 90px; accent-color: #ff8a3d; }
+.pace-n { font: 700 .78rem system-ui, sans-serif; min-width: 3.2em; text-align: right; }
+.voice-tip { margin-top: 10px; padding: 12px 14px; border-radius: 12px; font-size: .85rem; line-height: 1.5; color: #e8d6b5; background: rgba(255, 154, 61, .09); border: 1px solid rgba(255, 154, 61, .3); }
+.voice-tip ul { margin: 6px 0 6px 18px; padding: 0; }

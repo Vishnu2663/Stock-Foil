@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { hasVoiceFor, speak, speechSupported, stopSpeaking, voiceStatus, voicesFor } from '../../ai/speech';
+import { hasVoiceFor, speak, speechSupported, stopSpeaking, voiceQuality, voiceStatus, voicesFor } from '../../ai/speech';
 import { newCardSpec } from '../../core/card';
 import { newPairing } from '../../core/pairing';
 import { formatVerdict, STORY_LANGS, storyPack, type VerdictKind } from '../../i18n/story';
@@ -214,6 +214,9 @@ export function Story({ go }: { go: (r: string) => void }) {
   const [textDone, setTextDone] = useState(false);
   const [verdictDone, setVerdictDone] = useState(false);
   const [voiceURI, setVoiceURIState] = useState<string>('');
+  // storytelling pace: a touch slower than the app's read-aloud speed, remembered between visits
+  const [pace, setPaceState] = useState<number>(() => { try { const v = Number(localStorage.getItem('sf.storyrate')); return v >= 0.6 && v <= 1.2 ? v : 0.85; } catch { return 0.85; } });
+  const setPace = (n: number) => { setPaceState(n); try { localStorage.setItem('sf.storyrate', String(n)); } catch { /* ignore */ } };
   const setLang = (c: string) => { setLangState(c); try { localStorage.setItem('sf.storylang', c); } catch { /* ignore */ } };
   const [burn, setBurn] = useState(false);
   const token = useRef(0);
@@ -280,15 +283,15 @@ export function Story({ go }: { go: (r: string) => void }) {
     stopSpeaking();
     setTextDone(false);
     setVerdictDone(false);
-    if (voice) speak(`${sc.title}.\n${sc.text}`, lang, settings.speakRate, { tag: pack.speech, voiceURI: voiceURI || undefined, onEnd: () => setTextDone(true) });
+    if (voice) speak(`${sc.title}.\n${sc.text}`, lang, pace, { tag: pack.speech, voiceURI: voiceURI || undefined, onEnd: () => setTextDone(true) });
     return () => stopSpeaking();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [i, voice, lang, voiceURI]);
+  }, [i, voice, lang, voiceURI, pace]);
   // the scanner's verdict is read out after the chapter text
   useEffect(() => {
-    if (voice && verdictText) speak(verdictText, lang, settings.speakRate, { tag: pack.speech, voiceURI: voiceURI || undefined, queue: true, onEnd: () => setVerdictDone(true) });
+    if (voice && verdictText) speak(verdictText, lang, pace, { tag: pack.speech, voiceURI: voiceURI || undefined, queue: true, onEnd: () => setVerdictDone(true) });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [verdict, voice, lang, voiceURI]);
+  }, [verdict, voice, lang, voiceURI, pace]);
 
   // autoplay
   useEffect(() => {
@@ -360,8 +363,15 @@ export function Story({ go }: { go: (r: string) => void }) {
             <label className="lang-chip" title="Choose the narrator's voice">
               <span aria-hidden>🎙</span>
               <select value={vStatus.voice?.voiceURI ?? ''} onChange={(e) => setVoiceURI(e.target.value)} aria-label="Narrator voice">
-                {voiceList.map((v) => <option key={v.voiceURI} value={v.voiceURI}>{v.name.replace(/\s*\(.*\)\s*$/, '')}</option>)}
+                {voiceList.map((v) => <option key={v.voiceURI} value={v.voiceURI}>{voiceQuality(v) === 'natural' ? '★ ' : ''}{v.name.replace(/\s*\(.*\)\s*$/, '')}{voiceQuality(v) === 'basic' ? ' · basic' : ''}</option>)}
               </select>
+            </label>
+          )}
+          {voice && (
+            <label className="lang-chip pace" title="Narration speed">
+              <span aria-hidden>🐢</span>
+              <input type="range" min={0.6} max={1.1} step={0.05} value={pace} onChange={(e) => setPace(Number(e.target.value))} aria-label="Narration speed" />
+              <span className="pace-n">{pace.toFixed(2)}×</span>
             </label>
           )}
           <label className="lang-chip story-lang">
@@ -373,6 +383,17 @@ export function Story({ go }: { go: (r: string) => void }) {
         </div>
       </div>
       {voice && !voiceOk && <p className="small sans" style={{ color: '#ffb37a', margin: '8px 0 0' }}>This device has no {pack.name} voice installed, so the story is shown but not spoken. Pick another language, or add a {pack.name} voice in your system’s speech settings (on a phone: Settings → Accessibility → Spoken content / Text-to-speech). Chrome and Edge usually offer more voices than Firefox.</p>}
+      {voice && vStatus.voice && voiceQuality(vStatus.voice) === 'basic' && lang !== 'en' && (
+        <div className="voice-tip sans">
+          <b>🎙 This device only has a basic {pack.name} voice, which sounds robotic.</b> The app cannot improve it, but a better one is free:
+          <ul>
+            <li><b>Windows:</b> open this page in <b>Microsoft Edge</b>. Its online “Natural” voices (Tamil, Telugu, Bengali, Hindi, Marathi, Swahili, Arabic…) appear here automatically.</li>
+            <li><b>Android:</b> in <b>Chrome</b>, the Google voices are used automatically. Install the language in Settings → Text-to-speech.</li>
+            <li><b>Mac / iPhone:</b> Settings → Accessibility → Spoken Content → System Voice → Manage Voices, then download the <b>Enhanced</b> or <b>Premium</b> {pack.name} voice. Reload this page and it is picked first.</li>
+          </ul>
+          Slowing the speed a little (🐢) also helps a basic voice sound less choppy.
+        </div>
+      )}
       {voice && vStatus.kind === 'fallback' && <p className="small sans" style={{ color: '#d9c4a0', margin: '8px 0 0' }}>No {pack.name} voice is installed, so a Hindi voice reads it (same script). Install a {pack.name} voice for the best result.</p>}
       {lang !== 'en' && <p className="small sans" style={{ color: '#d9c4a0', margin: '6px 0 0' }}>Translations were drafted with AI and should be checked by a native speaker.</p>}
       <nav className="story-dots" aria-label="Chapters">
