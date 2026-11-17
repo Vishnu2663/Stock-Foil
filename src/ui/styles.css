@@ -736,3 +736,126 @@ table.hist td.empty { text-align: center; padding: 28px 12px; color: var(--ink-2
 .pace-n { font: 700 .78rem system-ui, sans-serif; min-width: 3.2em; text-align: right; }
 .voice-tip { margin-top: 10px; padding: 12px 14px; border-radius: 12px; font-size: .85rem; line-height: 1.5; color: #e8d6b5; background: rgba(255, 154, 61, .09); border: 1px solid rgba(255, 154, 61, .3); }
 .voice-tip ul { margin: 6px 0 6px 18px; padding: 0; }
+
+/* story chips: one ring on the whole pill, never a second box around the select */
+.chip-ico { flex: none; width: 19px; height: 19px; color: #ffb27a; }
+.lang-chip { transition: border-color .15s, box-shadow .15s, background .15s; }
+.lang-chip:hover { border-color: rgba(255, 154, 61, .55); background: rgba(255, 233, 199, .05); }
+.lang-chip:focus-within { border-color: #ff8a3d; box-shadow: 0 0 0 3px rgba(255, 138, 61, .22); }
+.lang-chip select, .lang-chip select:hover, .lang-chip select:focus, .lang-chip select:focus-visible { outline: none; box-shadow: none; border: 0; background-color: transparent; }
+.lang-chip select option { background: #1c0d10; color: #ffe2b8; }
+
+/* chapter timeline: connectors must span the whole gap, and the glow must not be clipped */
+.story-dots { padding: 12px 6px 8px; margin-top: 8px; }
+.story-dots button { overflow: visible !important; }
+.story-dots button::before { top: 25px; left: calc(-50% + 14px); right: calc(50% + 14px); height: 2px; border-radius: 2px; }
+.story-dots button:first-child::before { display: none; }
+.story-dots .dot { margin-top: 12px; }
+.story-dots button { padding-top: 0; }
+
+/* ---- dropdown polish: tinted line-icon tiles, arrow on hover, calmer layout ---- */
+.dd-menu { padding: 12px; }
+.dd-title { padding: 4px 12px 10px; margin-bottom: 4px; border-bottom: 1px solid var(--line); }
+.dd.wide .dd-menu { gap: 4px 8px; }
+.dd-item { position: relative; padding: 10px 34px 10px 10px; border: 1px solid transparent; transition: background .15s ease, border-color .15s ease, transform .15s ease; }
+.dd-item:hover, .dd-item:focus-visible { background: color-mix(in srgb, var(--hue, #ff8a3d) 9%, transparent); border-color: color-mix(in srgb, var(--hue, #ff8a3d) 30%, transparent); outline: none; }
+.dd-ico { color: var(--hue, var(--ink)); background: color-mix(in srgb, var(--hue, #888) 15%, var(--card)); border-color: color-mix(in srgb, var(--hue, #888) 38%, transparent); font-size: 1.1rem; transition: transform .2s cubic-bezier(.3, 1.5, .5, 1), background .15s, color .15s, box-shadow .15s; }
+.dd-item:hover .dd-ico { transform: translateY(-1px) scale(1.08) rotate(-4deg); background: var(--hue, var(--red)); color: #1b0f0a; box-shadow: 0 6px 16px color-mix(in srgb, var(--hue, #ff8a3d) 45%, transparent); }
+.dd-go { position: absolute; right: 12px; top: 50%; font-size: 1.4rem; line-height: 1; color: var(--hue, var(--ink-2)); opacity: 0; transform: translate(-6px, -52%); transition: opacity .15s, transform .18s; }
+.dd-item:hover .dd-go, .dd-item:focus-visible .dd-go { opacity: .9; transform: translate(0, -52%); }
+.dd-item.on { background: color-mix(in srgb, var(--hue, var(--red)) 14%, transparent); border-color: color-mix(in srgb, var(--hue, var(--red)) 40%, transparent); }
+.dd-item.on .dd-ico { background: var(--hue, var(--red)); color: #1b0f0a; border-color: transparent; }
+.dd-item.on .dd-txt b { color: var(--ink); }
+.dd-item.on .dd-go { opacity: .9; transform: translate(0, -52%); }
+@media (max-width: 1000px) { .dd-go { display: none; } .dd-item { padding-right: 14px; } }
+@media (prefers-reduced-motion: reduce) { .dd-item:hover .dd-ico { transform: none; } .dd-go { transition: none; } }
+.dd.wide .dd-menu { width: 640px; }
+@media (max-width: 1239px) and (min-width: 1001px) { .dd.wide .dd-menu { width: 600px; } }
+
+/* ================= payday card: the scan as an animated card ================= */
+.pc { position: relative; margin: 6px auto 20px; max-width: 640px; }
+.pc svg { width: 100%; height: auto; display: block; overflow: visible; font-family: system-ui, -apple-system, 'Segoe UI', 'Noto Sans', 'Noto Sans Devanagari', sans-serif; }
+.pc-aura { position: absolute; inset: 8% 4%; border-radius: 40px; background: radial-gradient(closest-side, color-mix(in srgb, var(--tone) 55%, transparent), transparent 72%); filter: blur(34px); opacity: .55; animation: pcAura 4s ease-in-out infinite; pointer-events: none; }
+@keyframes pcAura { 0%, 100% { opacity: .35; transform: scale(.96); } 50% { opacity: .7; transform: scale(1.04); } }
+.pc figcaption { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 6px; padding: 0 6px; }
+.pc-cap { display: inline-flex; align-items: center; gap: 8px; font: 700 .9rem system-ui, sans-serif; color: var(--ink); }
+.pc-cap i { width: 11px; height: 11px; border-radius: 50%; box-shadow: 0 0 12px currentColor; }
+
+/* the two halves arrive from apart and click together along the cut */
+.pc-top { animation: pcFlyTop .9s cubic-bezier(.2, .9, .25, 1) both; }
+.pc-bot { animation: pcFlyBot .9s cubic-bezier(.2, .9, .25, 1) both; }
+@keyframes pcFlyTop { from { transform: translateY(-46px) rotate(-1.4deg); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes pcFlyBot { from { transform: translateY(46px) rotate(1.4deg); opacity: 0; } to { transform: none; opacity: 1; } }
+.pc-cut { fill: none; stroke: #2b1a12; stroke-width: 1.6; stroke-dasharray: 5 4; stroke-linecap: round; opacity: .55; }
+.pc-cut-glow { fill: none; stroke: var(--tone); stroke-width: 3; stroke-linecap: round; stroke-dasharray: 1; stroke-dashoffset: 1; animation: pcCutDraw 1.3s .75s ease-out forwards; opacity: .9; }
+@keyframes pcCutDraw { 0% { stroke-dashoffset: 1; opacity: 1; } 70% { stroke-dashoffset: 0; opacity: 1; } 100% { stroke-dashoffset: 0; opacity: 0; } }
+.pc-sheen { animation: pcSheen 1.7s 1.1s ease-in-out both; }
+@keyframes pcSheen { from { transform: translateX(0); opacity: 1; } 90% { opacity: 1; } to { transform: translateX(760px); opacity: 0; } }
+
+/* text */
+.pc-tiny { font-size: 9px; font-weight: 800; letter-spacing: .16em; fill: #7a6a52; }
+.pc-mono { font: 700 11px ui-monospace, Menlo, monospace; letter-spacing: .08em; fill: #5b4d3a; }
+.pc-month { font: 800 26px 'Iowan Old Style', Georgia, serif; fill: #231710; animation: pcRise .7s .35s both; }
+.pc-name { font: 600 15px 'Iowan Old Style', Georgia, serif; font-style: italic; fill: #5b4d3a; animation: pcRise .7s .5s both; }
+.pc-name.big { font-size: 20px; font-style: normal; font-weight: 700; fill: #231710; }
+@keyframes pcRise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.pc-wd { font-size: 7.5px; font-weight: 700; fill: #8b7a60; letter-spacing: .06em; text-transform: uppercase; }
+.pc-formula { font: 600 12.5px system-ui, sans-serif; fill: #4a3a2a; }
+.pc-dispute { font: 700 11px system-ui, sans-serif; fill: #a8620a; }
+.pc-adv-n { font: 700 11px system-ui, sans-serif; fill: #5b4d3a; }
+.pc-amount { font: 800 52px 'Iowan Old Style', Georgia, serif; fill: #1d120c; font-variant-numeric: tabular-nums; }
+
+/* calendar: days appear in a wave, then each punched day pops a glowing hole */
+.pc-cellbox { fill: rgba(60, 40, 15, .05); stroke: rgba(80, 60, 30, .28); stroke-width: .6; }
+.pc-dn { font-size: 6.4px; font-weight: 700; fill: #6e5d45; }
+.pc-hole { fill: #1a100b; stroke: rgba(255, 255, 255, .5); stroke-width: .7; }
+.pc-hole-empty { fill: none; stroke: rgba(90, 70, 40, .35); stroke-width: .6; stroke-dasharray: 1.3 1.3; }
+.pc-ripple { fill: none; stroke-width: 1.4; opacity: 0; transform-box: fill-box; transform-origin: center; }
+.pc-day { animation: pcCell .5s calc(.55s + var(--i) * 22ms) both; }
+@keyframes pcCell { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: none; } }
+.pc-day .pc-hole, .pc-adv .pc-hole { transform-box: fill-box; transform-origin: center; animation: pcHole .5s calc(1.05s + var(--i) * 70ms) cubic-bezier(.3, 1.8, .5, 1) both; }
+@keyframes pcHole { from { transform: scale(0); } to { transform: scale(1); } }
+.pc-day.both .pc-ripple, .pc-adv.both .pc-ripple { stroke: #2fbf71; animation: pcRip 1s calc(1.1s + var(--i) * 70ms) ease-out both; }
+.pc-day.one .pc-ripple { stroke: #ff5a48; animation: pcRip 1.2s calc(1.1s + var(--i) * 70ms) ease-out 2 both; }
+@keyframes pcRip { 0% { opacity: .9; transform: scale(.4); } 100% { opacity: 0; transform: scale(1.9); } }
+.pc-day.both .pc-cellbox { animation: pcLitG 1.2s calc(1.1s + var(--i) * 70ms) ease-out both; }
+.pc-day.one .pc-cellbox { fill: rgba(255, 90, 72, .16); stroke: #ff5a48; stroke-width: 1; animation: pcPulseR 1.6s calc(1.2s + var(--i) * 70ms) ease-in-out infinite; }
+@keyframes pcLitG { 0% { fill: rgba(47, 191, 113, .5); } 100% { fill: rgba(47, 191, 113, .16); stroke: #2fbf71; } }
+@keyframes pcPulseR { 0%, 100% { fill: rgba(255, 90, 72, .12); } 50% { fill: rgba(255, 90, 72, .3); } }
+.pc-day.both .pc-cellbox { fill: rgba(47, 191, 113, .16); stroke: #2fbf71; stroke-width: .9; }
+.pc-advbox { fill: rgba(60, 40, 15, .06); stroke: rgba(80, 60, 30, .3); stroke-width: .7; }
+.pc-adv { animation: pcCell .5s calc(1s + var(--i) * 40ms) both; }
+.pc-adv.both .pc-advbox { stroke: #2fbf71; fill: rgba(47, 191, 113, .15); }
+
+/* progress ring */
+.pc-ring-bg { fill: rgba(255, 255, 255, .35); stroke: rgba(80, 60, 30, .18); stroke-width: 9; }
+.pc-ring { fill: none; stroke: var(--tone); stroke-width: 9; stroke-linecap: round; animation: pcRingFill 1.5s .9s cubic-bezier(.3, .9, .3, 1) both; filter: drop-shadow(0 0 6px var(--tone)); }
+@keyframes pcRingFill { from { stroke-dashoffset: var(--c); } to { stroke-dashoffset: var(--to); } }
+.pc-days { font: 800 30px 'Iowan Old Style', Georgia, serif; fill: #1d120c; font-variant-numeric: tabular-nums; }
+.pc-of { font-size: 9px; font-weight: 700; fill: #7a6a52; letter-spacing: .06em; }
+.pc-spark { fill: var(--tone); opacity: 0; animation: pcSpark 1.4s var(--d) ease-out 2.1s both; }
+@keyframes pcSpark { 0% { opacity: 1; transform: rotate(var(--a)) translateX(46px); } 100% { opacity: 0; transform: rotate(var(--a)) translateX(88px) scale(.3); } }
+
+/* stamps slam down */
+.pc-stamp { animation: pcStamp .55s 2s cubic-bezier(.2, 1.6, .4, 1) both; transform-box: fill-box; transform-origin: center; }
+@keyframes pcStamp { 0% { opacity: 0; transform: scale(3.2) rotate(8deg); } 60% { opacity: 1; transform: scale(.94); } 100% { opacity: 1; transform: none; } }
+.pc-stamp-box { fill: rgba(255, 252, 240, .6); stroke: var(--tone); stroke-width: 3.2; }
+.pc-stamp-in { fill: none; stroke: var(--tone); stroke-width: 1; stroke-dasharray: 3 2; }
+.pc-stamp-t { font: 900 25px system-ui, sans-serif; letter-spacing: .1em; fill: var(--tone); }
+.tone-ok .pc-stamp-t { fill: #178a4d; } .tone-ok .pc-stamp-box, .tone-ok .pc-stamp-in { stroke: #178a4d; }
+.tone-warn .pc-stamp-t { fill: #b97800; } .tone-warn .pc-stamp-box, .tone-warn .pc-stamp-in { stroke: #c98400; }
+.tone-bad .pc-stamp-t { fill: #d12f1f; } .tone-bad .pc-stamp-box, .tone-bad .pc-stamp-in { stroke: #d12f1f; }
+.pc-paystamp { animation: pcPay .5s cubic-bezier(.2, 1.7, .4, 1) both; transform-box: fill-box; transform-origin: center; }
+@keyframes pcPay { 0% { opacity: 0; transform: scale(2.6) rotate(-10deg); } 100% { opacity: .96; transform: none; } }
+.pc-pay-box { fill: rgba(255, 252, 240, .7); stroke-width: 3; }
+.pc-pay-t { font: 900 22px system-ui, sans-serif; letter-spacing: .12em; }
+.pc-paystamp.paid .pc-pay-box { stroke: #178a4d; } .pc-paystamp.paid .pc-pay-t { fill: #178a4d; }
+.pc-paystamp.unpaid .pc-pay-box { stroke: #c98400; } .pc-paystamp.unpaid .pc-pay-t { fill: #b97800; font-size: 17px; }
+.pc.tone-bad { animation: pcShake .6s 2.1s both; }
+@keyframes pcShake { 0%, 100% { translate: 0; } 20% { translate: -7px 0; } 40% { translate: 6px 0; } 60% { translate: -4px 0; } 80% { translate: 3px 0; } }
+
+@media (max-width: 520px) { .pc-amount { font-size: 46px; } }
+@media (prefers-reduced-motion: reduce) {
+  .pc-top, .pc-bot, .pc-month, .pc-name, .pc-day, .pc-adv, .pc-hole, .pc-ring, .pc-stamp, .pc-paystamp, .pc-aura, .pc-sheen, .pc-ripple, .pc-spark, .pc.tone-bad, .pc-day .pc-cellbox { animation: none !important; }
+  .pc-cut-glow { display: none; }
+}

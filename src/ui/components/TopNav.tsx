@@ -19,6 +19,24 @@ function Gear() {
  * collapses to a menu button with the same items as a list. Keyboard: Escape closes,
  * ArrowDown/Up/Home/End move through a menu, and menus are ordinary links.
  */
+/** Line icons for the dropdown tiles: one visual language instead of mixed emoji. */
+const DD_HUE: Record<string, string> = { history: '#f0a24b', ledger: '#e0925f', income: '#6fd39a', punch: '#ff6a55', demo: '#6aa9ff', lab: '#9be37a', calibrate: '#ff8a3d', about: '#b99cff' };
+function DdIcon({ route, fallback }: { route: string; fallback: string }) {
+  const p: Record<string, JSX.Element> = {
+    history: <><circle cx="12" cy="12" r="8.5" /><path d="M12 7.5V12l3 2" /></>,
+    ledger: <><path d="M5 4.5h11a2 2 0 0 1 2 2V20H7a2 2 0 0 1-2-2z" /><path d="M9 9h6M9 12.5h6" /></>,
+    income: <><rect x="4" y="5" width="16" height="12" rx="2" /><circle cx="12" cy="11" r="2.4" /><path d="M9 20l3-2.5 3 2.5" /></>,
+    punch: <><circle cx="12" cy="12" r="7" /><circle cx="12" cy="12" r="2.4" /></>,
+    demo: <><rect x="3.5" y="5" width="17" height="14" rx="3" /><path d="M10.5 9.5l4.5 2.5-4.5 2.5z" /></>,
+    lab: <><path d="M9.5 4h5M10.5 4v5.5L5.8 18a1.8 1.8 0 0 0 1.6 2.7h9.2a1.8 1.8 0 0 0 1.6-2.7L13.5 9.5V4" /><path d="M8 15h8" /></>,
+    calibrate: <><circle cx="12" cy="12" r="8" /><circle cx="12" cy="12" r="4" /><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3" /></>,
+    about: <><path d="M12 3.5l7 2.8v5.4c0 4.3-2.9 7.3-7 8.8-4.1-1.5-7-4.5-7-8.8V6.3z" /><path d="M9 12l2.2 2.2L15.2 10" /></>,
+  };
+  const g = p[route];
+  if (!g) return <>{fallback}</>;
+  return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" width="21" height="21">{g}</svg>;
+}
+
 export function TopNav({ route, primary, groups, settings }: { route: string; primary: NavItem[]; groups: Group[]; settings: NavItem }) {
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const [panel, setPanel] = useState(false);
@@ -153,9 +171,10 @@ export function TopNav({ route, primary, groups, settings }: { route: string; pr
                 <div className="dd-menu" role="menu" aria-label={g.label}>
                   <div className="dd-title">{g.label}</div>
                   {g.items.map((i, n) => (
-                    <a key={i.route} role="menuitem" style={{ ['--n' as string]: n }} href={`#/${i.route}`} className={`dd-item ${route === i.route ? 'on' : ''}`} aria-current={route === i.route ? 'page' : undefined}>
-                      <span className="dd-ico" aria-hidden>{i.icon}</span>
+                    <a key={i.route} role="menuitem" style={{ ['--n' as string]: n, ['--hue' as string]: DD_HUE[i.route] ?? '#ff8a3d' }} href={`#/${i.route}`} className={`dd-item ${route === i.route ? 'on' : ''}`} aria-current={route === i.route ? 'page' : undefined}>
+                      <span className="dd-ico" aria-hidden><DdIcon route={i.route} fallback={i.icon ?? ''} /></span>
                       <span className="dd-txt"><b>{i.label}</b>{i.hint && <small>{i.hint}</small>}</span>
+                      <span className="dd-go" aria-hidden>›</span>
                     </a>
                   ))}
                 </div>

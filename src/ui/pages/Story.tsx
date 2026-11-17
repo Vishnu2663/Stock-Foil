@@ -138,8 +138,8 @@ function Fire() {
         );
       })}
       <g aria-hidden>
-        <rect x="26" y="172" width="148" height="15" rx="7.5" fill="#1a0a06" opacity=".85" />
-        <text x="100" y="182.6" textAnchor="middle" fontSize="8.5" letterSpacing=".4" fill="#ffe2b8" fontFamily="system-ui" fontWeight="700">TALLY STICKS · EACH NOTCH = A DEBT</text>
+        <rect x="24" y="172" width="212" height="15" rx="7.5" fill="#1a0a06" opacity=".9" />
+        <text x="130" y="182.6" textAnchor="middle" fontSize="8" letterSpacing=".35" fill="#ffe2b8" fontFamily="system-ui" fontWeight="700" textLength="196" lengthAdjust="spacing">TALLY STICKS · EACH NOTCH = A DEBT</text>
       </g>
       {/* coal bed */}
       <rect x="86" y={base - 2} width="348" height="24" rx="10" fill="url(#coal)" />
@@ -377,7 +377,7 @@ export function Story({ go }: { go: (r: string) => void }) {
             </label>
           )}
           <label className="lang-chip story-lang">
-            <span aria-hidden>🌐</span>
+            <svg className="chip-ico" viewBox="0 0 24 24" aria-hidden fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 5h9M8.5 3v2M6 5c.6 3.2 2.6 5.8 5.5 7.4M11.5 5c-.7 3.4-3.2 6.2-6.5 7.7" /><path d="M13 20l4-9 4 9M14.4 17h5.2" /></svg>
             <select value={lang} onChange={(e) => setLang(e.target.value)} aria-label="Story language">
               {STORY_LANGS.map((p) => <option key={p.code} value={p.code}>{p.name}{voicesReady > 0 && speechSupported() && !hasVoiceFor(p.speech) ? ' · text only' : voicesReady > 0 && speechSupported() && voiceStatus(p.speech).kind === 'fallback' ? ' · Hindi voice' : ''}</option>)}
             </select>

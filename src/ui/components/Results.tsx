@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { explainPay } from '../../ai';
 import { daysInMonth, firstWeekday, formatMoney, MAX_AMOUNT_MAJOR } from '../../core/card';
 import { AmountInput } from './AmountInput';
+import { PaydayCard } from './PaydayCard';
 import { confetti, useCountUp } from '../fx';
 import { weekdayShort, monthName, t } from '../../i18n';
 import { addCrew, addReceipt, loadReceipts } from '../../store';
@@ -128,6 +129,22 @@ export function Results({ stock, foil, onReset }: { stock: Captured; foil: Captu
 
   return (
     <div>
+      <PaydayCard
+        spec={spec}
+        lang={lang}
+        tone={cls === 'ok' ? 'ok' : cls === 'bad' ? 'bad' : 'warn'}
+        stamp={r.verdict === 'genuine-consistent' ? 'VERIFIED' : r.verdict === 'genuine-disputed' ? 'IN DISPUTE' : r.verdict === 'pair-mismatch' ? 'REJECTED' : unreliable ? 'RETAKE' : 'CHECK'}
+        title={title}
+        dayStatus={r.cmp.dayStatus}
+        advStatus={r.cmp.advStatus}
+        agreedDays={r.pay.agreed.days}
+        agreedAdv={r.pay.agreed.advances}
+        netMinor={r.pay.agreed.netMinor}
+        disputedMinor={r.pay.disputedMinor}
+        money={m}
+        payState={status.paid ? 'paid' : status.pending ? 'unpaid' : 'none'}
+        formula={`${r.pay.agreed.days} days × ${m(spec.rateMinor)} − ${r.pay.agreed.advances} × ${m(spec.advMinor)}${carry !== 0 ? ` ${carry < 0 ? '−' : '+'} ${m(Math.abs(carry))} b/f` : ''}`}
+      />
       <div className={`verdict ${cls}`} role="status">
         <span className="big">{icon}</span>
         <div>
