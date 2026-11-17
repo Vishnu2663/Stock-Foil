@@ -108,6 +108,10 @@ export function sentences(text: string): { t: string; pause: number }[] {
   return out;
 }
 
+// Browsers drop the reference to an utterance that has no owner, and its "end" event then never fires
+// (a known Chrome bug that stalls or restarts narration), so every live utterance is kept here.
+const live = new Set<SpeechSynthesisUtterance>();
+
 function next(my: number) {
   if (my !== gen) return;
   const c = queue.shift();
@@ -124,16 +128,36 @@ function next(my: number) {
   u.pitch = 1;
   const st = voiceStatus(c.tag, c.voiceURI);
   if (st.voice) { u.voice = st.voice; u.lang = st.voice.lang; }
-  const go = () => { if (my === gen) setTimeout(() => next(my), c.pause); };
-  u.onend = go;
-  u.onerror = (e) => { if (e.error !== 'canceled' && e.error !== 'interrupted') go(); };
+  live.add(u);
+  let done = false;
+  // each utterance moves the story on exactly once, whether it ends, errors or hangs
+  const finish = () => {
+    if (done) return;
+    done = true;
+    clearTimeout(watchdog);
+    live.delete(u);
+    if (my === gen) setTimeout(() => next(my), c.pause);
+  };
+  // if the engine hangs (some online voices never report the end), move on after a sensible time
+  const watchdog = setTimeout(() => { if (my === gen) { speechSynthesis.cancel(); } finish(); }, 4000 + (c.text.length * 140) / Math.max(0.5, c.rate));
+  u.onend = finish;
+  u.onerror = (e) => { if (e.error === 'canceled' || e.error === 'interrupted') { done = true; clearTimeout(watchdog); live.delete(u); } else finish(); };
   speechSynthesis.speak(u);
 }
+
+let lastKey = '';
+let lastAt = 0;
 
 export function speak(text: string, lang: string, rate = 0.9, opts: SpeakOptions = {}): boolean {
   if (!speechSupported()) return false;
   const tag = opts.tag ?? langInfo(lang).speech;
   if (!opts.queue) {
+    // the same text asked for again within a moment is a duplicate start, not a request to restart it
+    const key = `${tag}|${opts.voiceURI ?? ''}|${rate}|${text}`;
+    const now = Date.now();
+    if (key === lastKey && now - lastAt < 700 && playing) { if (opts.onEnd) endCbs.push(opts.onEnd); return true; }
+    lastKey = key;
+    lastAt = now;
     gen++;
     queue = [];
     endCbs = [];
