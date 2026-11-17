@@ -705,3 +705,28 @@ table.hist td.empty { text-align: center; padding: 28px 12px; color: var(--ink-2
 .htile.hot { border-color: color-mix(in srgb, var(--amber) 60%, transparent); box-shadow: 0 0 22px color-mix(in srgb, var(--amber) 16%, transparent); }
 .htile span { display: block; font: 700 .78rem system-ui, sans-serif; letter-spacing: .04em; text-transform: uppercase; color: var(--ink-2); }
 .htile b { display: block; margin-top: 4px; font-size: 1.7rem; font-variant-numeric: tabular-nums; }
+
+/* ---- settle panel (payday result) ---- */
+.settle { margin-top: 14px; padding: 14px; border-radius: 16px; border: 1px solid var(--line); background: color-mix(in srgb, var(--paper-2) 60%, transparent); }
+.settle-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
+.settle-head b { display: block; font-size: 1.05rem; }
+.settle-head .small { color: var(--ink-2); }
+.settle-amt { text-align: right; font-size: 1.6rem; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1.1; }
+.settle-amt small { display: block; font: 700 .68rem system-ui, sans-serif; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-2); }
+.settle-block, .settle-note { margin: 0 0 10px; padding: 9px 12px; border-radius: 10px; font-size: .88rem; line-height: 1.4; }
+.settle-block { color: #ffb4a8; background: color-mix(in srgb, #ff6a55 14%, transparent); border: 1px solid color-mix(in srgb, #ff6a55 40%, transparent); }
+.settle-note { color: var(--ink-2); background: color-mix(in srgb, var(--amber) 10%, transparent); }
+.settle-btns { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 8px; }
+.settle-btns button { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 10px 14px; border-radius: 12px; text-align: left; }
+.settle-btns button span { font-weight: 800; font-size: 1rem; }
+.settle-btns button small { font-size: .74rem; font-weight: 500; opacity: .8; }
+
+/* ---- overlay legend under the marked photos ---- */
+.ovl-legend { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 8px 14px; margin-top: 12px; padding: 12px 14px; border-radius: 14px; border: 1px solid var(--line); background: color-mix(in srgb, var(--paper-2) 50%, transparent); font-family: system-ui, sans-serif; font-size: .84rem; color: var(--ink-2); }
+.ovl-item { display: flex; align-items: center; gap: 10px; line-height: 1.35; }
+.ovl-item b { color: var(--ink); }
+.ovl-item i { flex: none; width: 18px; height: 18px; border-radius: 50%; border: 3px solid; }
+.ovl-item.both i { border-color: #1f9d55; } .ovl-item.one i { border-color: #e3342f; } .ovl-item.unsure i { border-color: #f6a609; }
+.ovl-item.edge i { width: 7px; height: 7px; border: 0; background: #7c3aed; box-shadow: 9px 0 #7c3aed, -9px 0 #7c3aed; margin: 0 9px; }
+.ovl-n { margin-left: 8px; padding: 1px 8px; border-radius: 999px; font-style: normal; font-weight: 800; font-size: .76rem; background: var(--paper-2); color: var(--ink); }
+.ovl-legend > p { grid-column: 1 / -1; margin: 4px 0 0; padding-top: 8px; border-top: 1px solid var(--line); }

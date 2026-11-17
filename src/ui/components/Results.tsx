@@ -279,12 +279,30 @@ export function Results({ stock, foil, onReset }: { stock: Captured; foil: Captu
             </div>
           </div>
         )}
+        <div className="settle no-print">
+          <div className="settle-head">
+            <div>
+              <b>Settle this month</b>
+              <span className="small sans">{status.paid ? 'Already paid. This card is closed.' : status.pending ? 'Marked yet to pay. It is waiting in History.' : saved ? 'Saved in History, payment not recorded yet.' : 'Nothing recorded yet.'}</span>
+            </div>
+            <div className="settle-amt"><small>Agreed amount</small>{formatMoney(payable(net), spec.currency, lang)}</div>
+          </div>
+          {blocked && <p className="settle-block sans">⛔ {unreliable ? 'Payment cannot be recorded: the photos were not read reliably. Retake both photos.' : 'Payment cannot be recorded: the two halves do not belong to the same card.'}</p>}
+          <div className="settle-btns">
+            <button className="primary" onClick={() => record('paid')} disabled={status.paid || blocked} title="The money was handed over. Saves this scan to History as Paid. Paid is final: this card can never be paid twice.">
+              <span>{status.paid ? '💰 Paid ✓' : '💰 Paid'}</span><small>{status.paid ? 'recorded' : `handed over ${formatMoney(payable(net), spec.currency, lang)}`}</small>
+            </button>
+            <button onClick={() => record('unpaid')} disabled={status.paid || status.pending || blocked} title="Not paid yet. Saves this scan to History as Yet to pay, so it is not forgotten; you can mark it paid later.">
+              <span>{status.pending ? '⏳ Yet to pay ✓' : '⏳ Yet to pay'}</span><small>{status.pending ? 'recorded' : 'still owed, saved to History'}</small>
+            </button>
+            <button className="ghost" onClick={() => save()} disabled={saved || blocked} title="Save the scan to History without a payment status">
+              <span>{saved ? '✓ In History' : '📒 Save only'}</span><small>{saved ? 'saved' : 'no payment status'}</small>
+            </button>
+          </div>
+        </div>
         <div className="row no-print" style={{ marginTop: 10 }}>
           <button className="primary" disabled={unreliable} onClick={() => setShowSlip((s) => !s)}>🧾 {showSlip ? 'Hide' : 'Show'} pay slip</button>
           <button onClick={doExplain} disabled={busy || settings.aiProvider === 'off'}>{busy ? <span className="spin" /> : '🤖'} Explain simply</button>
-          <button className="primary" onClick={() => record('paid')} disabled={status.paid || blocked} title="The money was handed over. Saves this scan to History as Paid. Paid is final: this card can never be paid twice.">{status.paid ? '💰 Paid ✓' : '💰 Paid'}</button>
-          <button onClick={() => record('unpaid')} disabled={status.paid || status.pending || blocked} title="Not paid yet. Saves this scan to History as Yet to pay, so it is not forgotten; you can mark it paid later.">{status.pending ? '⏳ Yet to pay ✓' : '⏳ Yet to pay'}</button>
-          <button className="ghost" onClick={() => save()} disabled={saved || blocked} title="Save the scan to History without a payment status">{saved ? '✓ In History' : '📒 Save only'}</button>
           <button onClick={() => { addCrew({ cardId: spec.id, month: `${spec.year}-${String(spec.month).padStart(2, '0')}`, worker: spec.worker, employer: spec.employer, verdict: r.verdict, agreedDays: r.pay.agreed.days, advances: r.pay.agreed.advances, netMinor: r.pay.agreed.netMinor, disputedMinor: r.pay.disputedMinor, currency: spec.currency }); toast('Added to crew payroll'); }} disabled={r.verdict === 'pair-mismatch' || unreliable}>➕ Add to crew payroll</button>
           <button onClick={() => { downloadPhoto(stock.photo, `stock-${spec.id}.png`); setTimeout(() => downloadPhoto(foil.photo, `foil-${spec.id}.png`), 400); }} title="Save both photos as PNG so you can upload them on the Payday scan page, or on another device">⬇ Save photos</button>
           <button className="ghost" onClick={onReset}>Scan another</button>
@@ -313,7 +331,27 @@ export function Results({ stock, foil, onReset }: { stock: Captured; foil: Captu
           <canvas ref={cf} className="photo" />
         </div>
       </div>
-      <p className="small muted sans no-print">Green ring = punched on both · red = one half only · amber = unsure · purple dots = measured cut edge. {tt('slipAgreedNote')}</p>
+      {(() => {
+        const cnt = (st: string) => r.cmp.dayStatus.filter((x) => x === st).length + r.cmp.advStatus.filter((x) => x === st).length;
+        const unsure = [sH, fH].reduce((n, h) => n + h.days.filter((d) => d.uncertain && !d.manual).length + h.adv.filter((d) => d.uncertain && !d.manual).length, 0);
+        const items: { cls: string; label: string; what: string; n: number }[] = [
+          { cls: 'both', label: 'Green ring', what: 'punched on both halves, counted', n: cnt('both') },
+          { cls: 'one', label: 'Red ring', what: 'punched on one half only, not counted', n: cnt('stockOnly') + cnt('foilOnly') },
+          { cls: 'unsure', label: 'Amber ring', what: 'could not be read, check it by eye', n: unsure },
+          { cls: 'edge', label: 'Purple dots', what: 'the cut edge the app measured', n: 0 },
+        ];
+        return (
+          <div className="ovl-legend no-print" role="list" aria-label="How to read the marked photos">
+            {items.map((it) => (
+              <div key={it.cls} className={`ovl-item ${it.cls}`} role="listitem">
+                <i aria-hidden />
+                <span><b>{it.label}</b> {it.what}{it.cls !== 'edge' && <em className="ovl-n">{it.n}</em>}</span>
+              </div>
+            ))}
+            <p className="small sans">{tt('slipAgreedNote')}</p>
+          </div>
+        );
+      })()}
     </div>
   );
 }

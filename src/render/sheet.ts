@@ -103,8 +103,7 @@ function half(spec: CardSpec, role: Role, lang: string): string {
   const code = (y: number) => box(y, 14) + `<text x="${cx}" y="${y + 4.2}" font-size="2.3" font-weight="700" letter-spacing="0.4" text-anchor="middle" fill="${soft}">${esc(t(lang, 'cardCode').toUpperCase())}</text><text x="${cx}" y="${y + 10.6}" font-size="5.2" font-weight="800" text-anchor="middle" font-family="ui-monospace, Menlo, monospace" letter-spacing="0.6" fill="${ink}">${cardCode(spec)}</text>`;
   parts.push(code(58), rate(75));
   if (spec.pairing) {
-    // tell the holder what the QR is doing for them
-    parts.push(box(92, 14) + `<text x="${cx}" y="${92 + 5.6}" font-size="2.9" font-weight="800" text-anchor="middle" fill="#1f6b3c">✓ ${esc(t(lang, 'pairedBadge'))}</text><text x="${cx}" y="${92 + 9.6}" font-size="2.2" text-anchor="middle" fill="${soft}">${esc(t(lang, 'pairCaption'))}</text>`);
+    parts.push(box(92, 10) + `<text x="${cx}" y="${92 + 6.4}" font-size="3.2" font-weight="800" text-anchor="middle" fill="#1f6b3c">✓ ${esc(t(lang, 'pairedBadge'))}</text>`);
   }
 
   // ---- footer
