@@ -2,7 +2,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { explainPay } from '../../ai';
 import { daysInMonth, firstWeekday, formatMoney } from '../../core/card';
 import { weekdayShort, monthName, t } from '../../i18n';
-import { addCrew, addReceipt } from '../../store';
+import { addCrew, addReceipt, loadReceipts } from '../../store';
+import { paymentStatus, payable } from '../../core/settlement';
 import type { HalfScan, PhotoScan, CellReading } from '../../vision/detect';
 import type { RGBA } from '../../vision/image';
 import { verifyPair } from '../../vision/pair';
@@ -28,7 +29,7 @@ function applyEdits(h: HalfScan, edits: Edits): HalfScan {
 }
 
 export function Results({ stock, foil, onReset }: { stock: Captured; foil: Captured; onReset: () => void }) {
-  const { settings, t: tt, toast } = useApp();
+  const { settings, t: tt, toast, startCard } = useApp();
   const [lang, setLang] = useState(stock.half.payload.spec.lang || settings.lang);
   const [edits, setEdits] = useState<Edits>({});
   const [sel, setSel] = useState<number | null>(null);
@@ -36,12 +37,13 @@ export function Results({ stock, foil, onReset }: { stock: Captured; foil: Captu
   const [explain, setExplain] = useState<{ text: string; source: 'ai' | 'offline' } | null>(null);
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [paidTick, setPaidTick] = useState(0);
   const cs = useRef<HTMLCanvasElement>(null);
   const cf = useRef<HTMLCanvasElement>(null);
 
   const sH = useMemo(() => applyEdits(stock.half, edits), [stock, edits]);
   const fH = useMemo(() => applyEdits(foil.half, edits), [foil, edits]);
-  const r = useMemo(() => verifyPair(sH, fH), [sH, fH]);
+  const r = useMemo(() => verifyPair(sH, fH, { alignTolMm: settings.calibration.alignTolMm }), [sH, fH, settings.calibration.alignTolMm]);
   const { spec } = r;
 
   useEffect(() => {
@@ -54,6 +56,17 @@ export function Results({ stock, foil, onReset }: { stock: Captured; foil: Captu
   const icon = cls === 'ok' ? '✅' : cls === 'bad' ? '⛔' : '⚠️';
   const title = r.verdict === 'genuine-consistent' ? t(lang, 'vGenuine') : r.verdict === 'genuine-disputed' ? t(lang, 'vDisputed') : r.verdict === 'inconclusive' ? t(lang, 'vInconclusive') : r.verdict === 'review' ? t(lang, 'vReview') : unreliable ? t(lang, 'vUnreliable') : t(lang, 'vMismatch');
   const m = (v: number) => formatMoney(v, spec.currency, lang);
+  const monthKey = `${spec.year}-${String(spec.month).padStart(2, '0')}`;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const status = useMemo(() => paymentStatus(loadReceipts(), spec.id, monthKey, r.pay.agreed.netMinor), [spec.id, monthKey, r.pay.agreed.netMinor, paidTick, saved]);
+  const net = r.pay.agreed.netMinor;
+  const carry = r.pay.agreed.carryMinor;
+  const nextMonth = spec.month === 12 ? { year: spec.year + 1, month: 1 } : { year: spec.year, month: spec.month + 1 };
+  const markPaid = async () => {
+    await addReceipt({ cardId: spec.id, month: monthKey, worker: spec.worker, employer: spec.employer, verdict: 'paid', agreedDays: [], stockOnlyDays: [], foilOnlyDays: [], agreedAdv: 0, netMinor: payable(net), disputedMinor: r.pay.disputedMinor, currency: spec.currency });
+    setPaidTick((n) => n + 1);
+    toast(`Recorded: ${formatMoney(payable(net), spec.currency, lang)} paid`);
+  };
   const nDays = daysInMonth(spec.year, spec.month);
   const off = firstWeekday(spec.year, spec.month);
   const sus = new Set(r.alignment.flagged.filter((f) => f.kind === 'day').map((f) => f.n));
@@ -178,6 +191,7 @@ export function Results({ stock, foil, onReset }: { stock: Captured; foil: Captu
           <span>{m(spec.rateMinor)}</span>
           <span className="op">−</span>
           <span>{r.pay.agreed.advances} × {m(spec.advMinor)}</span>
+          {carry !== 0 && <><span className="op">{carry < 0 ? '−' : '+'}</span><span title="balance brought forward from last month">{m(Math.abs(carry))} b/f</span></>}
           <span className="op">=</span>
           <span className="total">{m(r.pay.agreed.netMinor)}</span>
         </div>
@@ -192,9 +206,24 @@ export function Results({ stock, foil, onReset }: { stock: Captured; foil: Captu
           </tbody>
         </table>
         {r.pay.disputedMinor > 0 && <p className="small sans" style={{ color: 'var(--amber)', marginTop: 8 }}>In dispute: {m(r.pay.disputedMinor)}. Pay the agreed amount now; settle the rest together.</p>}
+        {status.paid && (
+          <div className="card flat sans" style={{ marginTop: 10, borderColor: status.changed ? 'var(--bad)' : 'var(--green)' }}>
+            <b>💰 Already paid</b> on {new Date(status.at!).toLocaleDateString(lang)}: {m(status.amountMinor!)}.
+            {status.changed && <div style={{ color: 'var(--bad)' }}>⚠ These records now show {m(payable(net))}, which differs from the {m(status.amountMinor!)} paid. Check before paying anything more.</div>}
+          </div>
+        )}
+        {net < 0 && !unreliable && (
+          <div className="card flat sans no-print" style={{ marginTop: 10 }}>
+            <b>Balance to carry forward: −{m(-net)}</b> (the worker has taken more than earned). Pay nothing now; carry it onto next month’s card so it is not forgotten or changed.
+            <div className="row" style={{ marginTop: 8 }}>
+              <button className="sm" onClick={() => startCard({ worker: spec.worker, employer: spec.employer, rateMinor: spec.rateMinor, advMinor: spec.advMinor, currency: spec.currency, lang: spec.lang, year: nextMonth.year, month: nextMonth.month, carryMinor: net })}>＋ Make next month’s card with this balance</button>
+            </div>
+          </div>
+        )}
         <div className="row no-print" style={{ marginTop: 10 }}>
           <button className="primary" disabled={unreliable} onClick={() => setShowSlip((s) => !s)}>🧾 {showSlip ? 'Hide' : 'Show'} pay slip</button>
           <button onClick={doExplain} disabled={busy || settings.aiProvider === 'off'}>{busy ? <span className="spin" /> : '🤖'} Explain simply</button>
+          <button onClick={markPaid} disabled={status.paid || r.verdict === 'pair-mismatch' || unreliable} title="Record that the agreed amount was handed over. Rescanning this card later will warn that it is already paid.">{status.paid ? '💰 Paid' : '💰 Mark as paid'}</button>
           <button onClick={save} disabled={saved || r.verdict === 'pair-mismatch' || unreliable}>{saved ? '✓ Saved' : '📒 Save to ledger'}</button>
           <button onClick={() => { addCrew({ cardId: spec.id, month: `${spec.year}-${String(spec.month).padStart(2, '0')}`, worker: spec.worker, employer: spec.employer, verdict: r.verdict, agreedDays: r.pay.agreed.days, advances: r.pay.agreed.advances, netMinor: r.pay.agreed.netMinor, disputedMinor: r.pay.disputedMinor, currency: spec.currency }); toast('Added to crew payroll'); }} disabled={r.verdict === 'pair-mismatch' || unreliable}>➕ Add to crew payroll</button>
           <button onClick={() => { downloadPhoto(stock.photo, `stock-${spec.id}.png`); setTimeout(() => downloadPhoto(foil.photo, `foil-${spec.id}.png`), 400); }} title="Save both photos as PNG so you can upload them on the Payday scan page, or on another device">⬇ Save photos</button>

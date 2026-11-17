@@ -70,14 +70,16 @@ export interface PayLine {
   advances: number;
   advMinor: number;
   advancesMinor: number;
+  /** balance brought forward (negative = worker owes), included in net */
+  carryMinor: number;
   /** May be negative: then the worker owes a balance carried forward. */
   netMinor: number;
 }
 
-export function payLine(days: number, rateMinor: number, advances: number, advMinor: number): PayLine {
+export function payLine(days: number, rateMinor: number, advances: number, advMinor: number, carryMinor = 0): PayLine {
   const grossMinor = days * rateMinor;
   const advancesMinor = advances * advMinor;
-  return { days, rateMinor, grossMinor, advances, advMinor, advancesMinor, netMinor: grossMinor - advancesMinor };
+  return { days, rateMinor, grossMinor, advances, advMinor, advancesMinor, carryMinor, netMinor: grossMinor - advancesMinor + carryMinor };
 }
 
 export interface PayResult {
@@ -91,14 +93,14 @@ export interface PayResult {
   disputedMinor: number;
 }
 
-export function computePay(cmp: Comparison, rateMinor: number, advMinor: number): PayResult {
+export function computePay(cmp: Comparison, rateMinor: number, advMinor: number, carryMinor = 0): PayResult {
   const sDays = cmp.agreedDays.length + cmp.stockOnlyDays.length;
   const fDays = cmp.agreedDays.length + cmp.foilOnlyDays.length;
   const sAdv = cmp.agreedAdv.length + cmp.stockOnlyAdv.length;
   const fAdv = cmp.agreedAdv.length + cmp.foilOnlyAdv.length;
-  const agreed = payLine(cmp.agreedDays.length, rateMinor, cmp.agreedAdv.length, advMinor);
-  const workerView = payLine(sDays, rateMinor, sAdv, advMinor);
-  const employerView = payLine(fDays, rateMinor, fAdv, advMinor);
+  const agreed = payLine(cmp.agreedDays.length, rateMinor, cmp.agreedAdv.length, advMinor, carryMinor);
+  const workerView = payLine(sDays, rateMinor, sAdv, advMinor, carryMinor);
+  const employerView = payLine(fDays, rateMinor, fAdv, advMinor, carryMinor);
   return { agreed, workerView, employerView, disputedMinor: Math.abs(workerView.netMinor - employerView.netMinor) };
 }
 

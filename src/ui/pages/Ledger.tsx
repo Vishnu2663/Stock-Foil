@@ -60,7 +60,7 @@ export function Ledger({ go, reprint }: { go: (r: string) => void; reprint: (id:
                   <td>{r.month}</td>
                   <td>{r.worker || '—'}</td>
                   <td>{r.agreedDays.length}{r.stockOnlyDays.length + r.foilOnlyDays.length ? ` (+${r.stockOnlyDays.length + r.foilOnlyDays.length}?)` : ''}</td>
-                  <td>{r.verdict.replace('genuine-', '')}</td>
+                  <td>{r.verdict === 'paid' ? '💰 paid' : r.verdict.replace('genuine-', '')}</td>
                   <td>{formatMoney(r.netMinor, r.currency)}</td>
                   <td>{r.disputedMinor ? formatMoney(r.disputedMinor, r.currency) : '—'}</td>
                 </tr>

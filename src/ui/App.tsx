@@ -4,10 +4,12 @@ import type { CardSpec } from '../core/card';
 import { loadCards, loadSettings, saveSettings, type Settings as SettingsT } from '../store';
 import { AppCtx } from './ctx';
 import { About } from './pages/About';
+import { Calibrate } from './pages/Calibrate';
 import { Crew } from './pages/Crew';
 import { Demo } from './pages/Demo';
 import { Haunt } from './pages/Haunt';
 import { Home } from './pages/Home';
+import { Income } from './pages/Income';
 import { Issue } from './pages/Issue';
 import { Lab } from './pages/Lab';
 import { Members } from './pages/Members';
@@ -15,8 +17,9 @@ import { Ledger } from './pages/Ledger';
 import { Punch } from './pages/Punch';
 import { Scan } from './pages/Scan';
 import { Settings } from './pages/Settings';
+import { TopNav } from './components/TopNav';
 
-const ROUTES = ['home', 'issue', 'punch', 'scan', 'members', 'crew', 'demo', 'haunt', 'lab', 'ledger', 'about', 'settings'] as const;
+const ROUTES = ['home', 'issue', 'punch', 'scan', 'members', 'crew', 'income', 'calibrate', 'demo', 'haunt', 'lab', 'ledger', 'about', 'settings'] as const;
 type Route = (typeof ROUTES)[number];
 
 const readRoute = (): Route => {
@@ -57,41 +60,36 @@ export function App() {
   }, []);
 
   const ctx = useMemo(
-    () => ({ settings, setSettings, lang: settings.lang, t: (k: string, v?: Record<string, string | number>) => tr(settings.lang, k, v), toast }),
-    [settings, setSettings, toast],
+    () => ({ settings, setSettings, lang: settings.lang, t: (k: string, v?: Record<string, string | number>) => tr(settings.lang, k, v), toast, startCard: (d: Partial<CardSpec>) => { setDraft(d); go('issue'); } }),
+    [settings, setSettings, toast, go],
   );
   const t = ctx.t;
-  const nav: [Route, string][] = [
-    ['home', t('navHome')],
-    ['issue', t('navIssue')],
-    ['punch', t('navPunch')],
-    ['scan', t('navScan')],
-    ['members', 'Members'],
-    ['crew', 'Crew'],
-    ['demo', '▶ Demo'],
-    ['haunt', '🎃 Story mode'],
-    ['lab', t('navLab')],
-    ['ledger', t('navLedger')],
-    ['about', t('navAbout')],
-    ['settings', '⚙'],
+  const primary = [
+    { route: 'home', label: t('navHome') },
+    { route: 'issue', label: t('navIssue') },
+    { route: 'scan', label: t('navScan') },
+    { route: 'members', label: 'Members' },
+    { route: 'crew', label: 'Crew' },
+  ];
+  const groups = [
+    { id: 'records', label: 'Records', items: [
+      { route: 'ledger', icon: '📒', label: t('navLedger'), hint: 'Receipts, paid status, cards' },
+      { route: 'income', icon: '🧾', label: 'Income proof', hint: 'Certificate for a loan or rent' },
+    ] },
+    { id: 'more', label: 'More', items: [
+      { route: 'punch', icon: '⭕', label: t('navPunch'), hint: 'How to punch each day' },
+      { route: 'demo', icon: '▶️', label: 'Demo', hint: 'The 4 vs 5 days story' },
+      { route: 'haunt', icon: '🎃', label: 'Story mode', hint: 'The 1834 fire, narrated' },
+      { route: 'lab', icon: '🧪', label: t('navLab'), hint: 'Simulate, forge, stress-test' },
+      { route: 'calibrate', icon: '🎯', label: 'Calibrate', hint: 'Tune to your paper and punch' },
+      { route: 'about', icon: '📜', label: t('navAbout'), hint: 'Security model and limits' },
+    ] },
   ];
   const reprint = reprintId ? loadCards().find((c) => c.id === reprintId) : undefined;
 
   return (
     <AppCtx.Provider value={ctx}>
-      <header className="top">
-        <div className="in">
-          <a className="brand" href="#/home" aria-label="Stock & Foil home">
-            <svg viewBox="0 0 96 96" aria-hidden><rect width="96" height="96" rx="20" fill="#7a1f1f" /><path d="M14 40 Q30 28 48 40 T82 40 V20 H14Z" fill="#f4ead2" /><path d="M14 40 Q30 28 48 40 T82 40 V76 H14Z" fill="#e6d6ad" /><circle cx="30" cy="22" r="5" fill="#7a1f1f" /><circle cx="48" cy="22" r="5" fill="#7a1f1f" /><circle cx="66" cy="22" r="5" fill="#7a1f1f" /><circle cx="30" cy="58" r="5" fill="#7a1f1f" /><circle cx="48" cy="58" r="5" fill="#7a1f1f" /><circle cx="66" cy="58" r="5" fill="#7a1f1f" /></svg>
-            Stock &amp; Foil
-          </a>
-          <nav aria-label="Main">
-            {nav.map(([r, label]) => (
-              <a key={r} href={`#/${r}`} className={route === r ? 'on' : ''}>{label}</a>
-            ))}
-          </nav>
-        </div>
-      </header>
+      <TopNav route={route} primary={primary} groups={groups} settings={{ route: 'settings', label: 'Settings' }} />
       <main className="wrap">
         {route === 'home' && <Home go={go} />}
         {route === 'issue' && <Issue key={reprintId ?? (draft ? JSON.stringify(draft) : 'new')} initial={reprint} draft={draft ?? undefined} />}
@@ -99,6 +97,8 @@ export function App() {
         {route === 'punch' && <Punch />}
         {route === 'scan' && <Scan />}
         {route === 'crew' && <Crew go={go} />}
+        {route === 'income' && <Income />}
+        {route === 'calibrate' && <Calibrate />}
         {route === 'demo' && <Demo />}
         {route === 'haunt' && <Haunt />}
         {route === 'lab' && <Lab />}

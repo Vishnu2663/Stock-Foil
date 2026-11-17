@@ -44,9 +44,9 @@ function half(spec: CardSpec, role: Role, lang: string): string {
   parts.push(`<path d="${qrPath(encodePayload(spec, role))}" fill="${ink}"/>`);
   // title block
   const title = stock ? t(lang, 'stockTitle') : t(lang, 'foilTitle');
-  parts.push(`<text x="14" y="13" font-size="6" font-weight="700" fill="${ink}">${esc(title)}</text>`);
-  parts.push(`<text x="14" y="18.5" font-size="3.6" fill="${ink}">${esc(monthName(lang, spec.month))} ${spec.year} · ${esc(spec.worker || '—')} / ${esc(spec.employer || '—')}</text>`);
-  parts.push(`<text x="14" y="22.5" font-size="3" fill="#555">${esc(formatMoney(spec.rateMinor, spec.currency, lang))} / ${esc(t(lang, 'perDay'))} · ${t(lang, 'cardCode')} ${cardCode(spec)}</text>`);
+  parts.push(`<text x="14" y="12" font-size="6" font-weight="700" fill="${ink}">${esc(title)}</text>`);
+  parts.push(`<text x="14" y="17" font-size="3.6" fill="${ink}">${esc(monthName(lang, spec.month))} ${spec.year} · ${esc(spec.worker || '—')} / ${esc(spec.employer || '—')}</text>`);
+  parts.push(`<text x="14" y="20.8" font-size="2.9" fill="#555">${esc(formatMoney(spec.rateMinor, spec.currency, lang))} / ${esc(t(lang, 'perDay'))} · ${t(lang, 'cardCode')} ${cardCode(spec)}</text>`);
   // weekday headers
   for (let c = 0; c < GRID_COLS; c++) {
     parts.push(`<text x="${GRID_X + c * CELL_W + CELL_W / 2}" y="${GRID_Y - 2.2}" font-size="2.8" text-anchor="middle" fill="#555">${esc(weekdayShort(lang, c))}</text>`);
@@ -67,6 +67,7 @@ function half(spec: CardSpec, role: Role, lang: string): string {
     parts.push(`<circle cx="${c.cx}" cy="${c.cy}" r="${HOLE_R}" fill="none" stroke="#999" stroke-width="0.15" stroke-dasharray="0.7 0.7"/>`);
   }
   parts.push(`<text x="14" y="${FRAME_H - 3.5}" font-size="2.6" fill="#777">${esc(stock ? t(lang, 'keepStock') : t(lang, 'keepFoil'))}</text>`);
+  if (spec.carryMinor) parts.push(`<text x="${FRAME_W - 14}" y="${FRAME_H - 3.5}" font-size="3" font-weight="700" text-anchor="end" fill="${ink}">${esc(t(lang, 'carryRow', { v: formatMoney(spec.carryMinor, spec.currency, lang) }))}</text>`);
   return parts.join('');
 }
 

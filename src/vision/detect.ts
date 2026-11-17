@@ -107,6 +107,9 @@ export function findQrs(img: RGBA, max = 2): QrHit[] {
     { make: () => blurRGBA(img, 2), scale: 1 },
     { make: () => unsharpRGBA(blurRGBA(img, 1), 3, 1.5), scale: 1 },
     { make: () => upscale2(unsharpRGBA(blurRGBA(img, 1), 3, 1.5)), scale: 2 },
+    // last resorts for heavy blur + noise together
+    { make: () => unsharpRGBA(blurRGBA(img, 1), 3, 3), scale: 1 },
+    { make: () => upscale2(unsharpRGBA(blurRGBA(img, 1), 3, 3)), scale: 2 },
   ];
   for (const { make, scale } of variants) {
     const src = make();
@@ -515,6 +518,7 @@ function holeCentre(g: Gray, H: H, c: Pt, ref: number, skip: { x0: number; y0: n
 
 export function scanPhoto(img: RGBA, opts: DetectOptions = {}): PhotoScan {
   const o = { ...DEFAULTS, ...opts };
+  if (opts.punchRatio && !opts.uncertainBand) o.uncertainBand = [opts.punchRatio * 0.774, opts.punchRatio * 1.258];
   const gray = rgbaToGray(img);
   const hits = findQrs(img, o.maxQr);
   const halves: HalfScan[] = [];

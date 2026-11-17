@@ -21,6 +21,12 @@ export interface CardSpec {
   employer: string;
   /** Preferred language of the worker (BCP-47), used for the slip and voice. */
   lang: string;
+  /**
+   * Balance brought forward from the previous month, minor units. Negative = the
+   * worker still owes this (it is deducted); positive = the employer still owes it.
+   * Zero for ordinary cards, which keep the original SF1 format byte-for-byte.
+   */
+  carryMinor: number;
 }
 
 export const MAX_NAME = 18;
@@ -42,6 +48,7 @@ export function newCardSpec(input: Partial<Omit<CardSpec, 'v' | 'id'>> & { id?: 
     worker: cleanName(input.worker ?? ''),
     employer: cleanName(input.employer ?? ''),
     lang: input.lang ?? 'en',
+    carryMinor: Math.round(input.carryMinor ?? 0),
   };
 }
 
@@ -51,7 +58,10 @@ export function newCardSpec(input: Partial<Omit<CardSpec, 'v' | 'id'>> & { id?: 
  * month or name cannot pose as the partner of the original half.
  */
 export function cardCode(spec: CardSpec): string {
-  const s = [spec.v, spec.id, spec.year, spec.month, spec.rateMinor, spec.advMinor, spec.currency, spec.worker, spec.employer, spec.lang].join('|');
+  const parts: (string | number)[] = [spec.v, spec.id, spec.year, spec.month, spec.rateMinor, spec.advMinor, spec.currency, spec.worker, spec.employer, spec.lang];
+  // only mixed in when non-zero, so every card printed before carry-forward existed keeps its code
+  if (spec.carryMinor) parts.push('c' + spec.carryMinor);
+  const s = parts.join('|');
   const c = toBase32(hash53(s, 0x5f0), 6);
   return `${c.slice(0, 3)}-${c.slice(3)}`;
 }
@@ -61,10 +71,18 @@ export function waveSeed(spec: Pick<CardSpec, 'id'>): number {
   return hash53('wave:' + spec.id) >>> 0;
 }
 
-/** QR payload: SF1|role|id|yyyymm|rate|adv|cur|lang|code|worker|employer */
+/**
+ * QR payload. Ordinary cards use the original SF1 layout:
+ *   SF1|role|id|yyyymm|rate|adv|cur|lang|code|worker|employer
+ * Cards with a balance brought forward use SF2, which adds the carry field:
+ *   SF2|role|id|yyyymm|rate|adv|cur|lang|carry|code|worker|employer
+ * Both decode, so cards that are already printed keep working.
+ */
 export function encodePayload(spec: CardSpec, role: Role): string {
   const ym = `${spec.year}${String(spec.month).padStart(2, '0')}`;
-  return ['SF1', role, spec.id, ym, spec.rateMinor, spec.advMinor, spec.currency, spec.lang, cardCode(spec).replace('-', ''), spec.worker, spec.employer].join('|');
+  const code = cardCode(spec).replace('-', '');
+  if (spec.carryMinor) return ['SF2', role, spec.id, ym, spec.rateMinor, spec.advMinor, spec.currency, spec.lang, spec.carryMinor, code, spec.worker, spec.employer].join('|');
+  return ['SF1', role, spec.id, ym, spec.rateMinor, spec.advMinor, spec.currency, spec.lang, code, spec.worker, spec.employer].join('|');
 }
 
 export interface DecodedPayload {
@@ -76,7 +94,12 @@ export interface DecodedPayload {
 
 export function decodePayload(text: string): DecodedPayload | null {
   const p = text.split('|');
-  if (p.length < 11 || p[0] !== 'SF1') return null;
+  const ver = p[0];
+  if (ver !== 'SF1' && ver !== 'SF2') return null;
+  const carryAt = ver === 'SF2' ? 8 : -1;
+  const codeAt = ver === 'SF2' ? 9 : 8;
+  const nameAt = codeAt + 1;
+  if (p.length < nameAt + 2) return null;
   const role = p[1];
   if (role !== 'S' && role !== 'F') return null;
   const ym = p[3];
@@ -85,7 +108,8 @@ export function decodePayload(text: string): DecodedPayload | null {
   if (month < 1 || month > 12) return null;
   const rateMinor = Number(p[4]);
   const advMinor = Number(p[5]);
-  if (!Number.isFinite(rateMinor) || !Number.isFinite(advMinor)) return null;
+  const carryMinor = carryAt >= 0 ? Number(p[carryAt]) : 0;
+  if (!Number.isFinite(rateMinor) || !Number.isFinite(advMinor) || !Number.isFinite(carryMinor)) return null;
   const spec: CardSpec = {
     v: 1,
     id: p[2],
@@ -95,10 +119,11 @@ export function decodePayload(text: string): DecodedPayload | null {
     advMinor,
     currency: p[6],
     lang: p[7],
-    worker: p[9],
-    employer: p.slice(10).join('|'),
+    carryMinor,
+    worker: p[nameAt],
+    employer: p.slice(nameAt + 1).join('|'),
   };
-  const codeOk = cardCode(spec).replace('-', '') === p[8];
+  const codeOk = cardCode(spec).replace('-', '') === p[codeAt];
   return { spec, role, codeOk };
 }
 

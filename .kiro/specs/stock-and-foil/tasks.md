@@ -18,6 +18,7 @@
 - [x] 16. PWA offline shell (R8)
 - [x] 16b. Scanner in a Web Worker; ledger and AI tests; removed keyless AI endpoint that now needs a bot-check
 - [x] 16c. Punched-together alignment check, crew payroll with cash breakdown, Halloween story mode, hosting setup
+- [x] 16d. Paid status, carry-forward balance (SF2), income certificate with verifier, calibration tool
 - [ ] 17. Native-speaker review of translations
 - [ ] 18. Field test with printed cards, real punches and real phones
 - [ ] 19. Calibrate the 1.2 mm alignment tolerance on photos of really punched cards

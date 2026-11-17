@@ -63,6 +63,17 @@ describe('AI layer', () => {
     }), { numRuns: 100 });
   });
 
+  it('a carried balance is stated in the offline explanation (so the spoken sum adds up) and in the AI facts', () => {
+    fc.assert(fc.property(fc.integer({ min: -900_000, max: 900_000 }).filter((n) => n !== 0), fc.uniqueArray(fc.integer({ min: 1, max: 30 }), { minLength: 1 }), (carry, d) => {
+      const r = fakeResult(d, d);
+      const withCarry = { ...r, pay: computePay(r.cmp, r.spec.rateMinor, r.spec.advMinor, carry) } as PairResult;
+      const t = offlineExplain(withCarry, 'en');
+      expect(t).toContain('balance brought forward');
+      expect(anonymisedFacts(withCarry)).toContain('Balance brought forward');
+      expect(offlineExplain(r, 'en')).not.toContain('balance brought forward');
+    }), { numRuns: 100 });
+  });
+
   it('with AI off, explainPay returns the offline text; a failing provider falls back too', async () => {
     const r = fakeResult([1, 2], [1, 2]);
     const off = await explainPay({ ...DEFAULT_SETTINGS, aiProvider: 'off' }, r, 'en');

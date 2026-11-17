@@ -60,6 +60,13 @@ export function Slip({ r, lang, explain }: { r: PairResult; lang: string; explai
             ))}
           </div>
         )}
+        {a.carryMinor !== 0 && (
+          <div className="line">
+            <span className="e">↪</span>
+            <span className="l">{t(lang, 'slipCarry')}</span>
+            <b>{a.carryMinor < 0 ? '−' : '+'}{m(Math.abs(a.carryMinor))}</b>
+          </div>
+        )}
         <div className="total">
           <span>{a.netMinor >= 0 ? `✅ ${t(lang, 'slipTotal')}` : t(lang, 'slipOwed')}</span>
           <span>{m(Math.abs(a.netMinor))}</span>

@@ -21,13 +21,14 @@ export function Issue({ initial, draft }: { initial?: CardSpec; draft?: Partial<
   const [adv, setAdv] = useState(seed?.advMinor !== undefined ? seed.advMinor / 100 : 100);
   const [currency, setCurrency] = useState(seed?.currency ?? 'INR');
   const [lang, setLang] = useState(seed?.lang ?? settings.lang);
+  const [carry, setCarry] = useState(seed?.carryMinor !== undefined ? seed.carryMinor / 100 : 0);
   const [id, setId] = useState(initial?.id ?? randomId(8));
 
   const spec = useMemo(() => {
     const [y, m] = ym.split('-').map(Number);
-    return newCardSpec({ id, year: y || now.getFullYear(), month: m || 1, rateMinor: Math.round(rate * 100), advMinor: Math.round(adv * 100), currency, worker, employer, lang });
+    return newCardSpec({ id, year: y || now.getFullYear(), month: m || 1, rateMinor: Math.round(rate * 100), advMinor: Math.round(adv * 100), currency, worker, employer, lang, carryMinor: Math.round(carry * 100) });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id, ym, rate, adv, currency, worker, employer, lang]);
+  }, [id, ym, rate, adv, currency, worker, employer, lang, carry]);
   const svg = useMemo(() => sheetSvg(spec, lang), [spec, lang]);
 
   return (
@@ -45,6 +46,8 @@ export function Issue({ initial, draft }: { initial?: CardSpec; draft?: Partial<
             <div className="field" style={{ flex: 1 }}><label>Daily wage</label><input type="number" min={0} step="any" value={rate} onChange={(e) => setRate(Number(e.target.value))} /></div>
             <div className="field" style={{ flex: 1 }}><label>One advance token is worth</label><input type="number" min={0} step="any" value={adv} onChange={(e) => setAdv(Number(e.target.value))} /></div>
           </div>
+          <div className="field"><label>Balance brought forward (optional)</label><input type="number" step="any" value={carry} onChange={(e) => setCarry(Number(e.target.value))} />
+            <div className="small muted sans">Negative = the worker still owes this from last month and it is deducted. Positive = the employer still owes it. It is printed on the card and locked into its code, so it cannot be changed later.</div></div>
           <div className="field"><label>Language on the card and slip</label>
             <select value={lang} onChange={(e) => setLang(e.target.value)}>{LANGS.map((l) => <option key={l.code} value={l.code}>{l.name}</option>)}</select>
           </div>

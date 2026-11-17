@@ -24,7 +24,7 @@ npm test           # property-based tests
 SF_RUNS=100 npm test   # heavier run
 ```
 
-Pages: **Home** (with a QR to open it on a phone), **Members**, **Crew**, **🎃 Story mode**, **New card** (print), **Punch** (guide), **Payday scan** (camera with live guidance, or photos), **Demo** (the 4-vs-5 days story, a real scanner run), **Test lab** (photo simulator, tampering, stress test, print round-trip), **Ledger**, **Story**, **Settings**.
+Pages: **Income proof**, **Calibrate**, **Home** (with a QR to open it on a phone), **Members**, **Crew**, **🎃 Story mode**, **New card** (print), **Punch** (guide), **Payday scan** (camera with live guidance, or photos), **Demo** (the 4-vs-5 days story, a real scanner run), **Test lab** (photo simulator, tampering, stress test, print round-trip), **Ledger**, **Story**, **Settings**.
 
 ## Features
 
@@ -34,6 +34,10 @@ Pages: **Home** (with a QR to open it on a phone), **Members**, **Crew**, **🎃
 - **Automatic capture:** open the camera, show each half, and it captures by itself once the half is read cleanly on two frames in a row; it stays open until both halves are in. Uploads are read automatically too: choose both photos at once, or drag and drop them.
 - **Unreliable scans are refused:** if fewer than 3 corner squares are found, the verdict is "photo not reliable", the pay box warns, and the slip and ledger save are disabled.
 - **"Punched together" check:** a hole made through both halves at once lands at the same spot on each. The scanner measures every hole centre, fits the stacking error as a shift plus slight rotation, and judges each hole against a fit made *without* it. A hole made separately (about 1.2 mm or more off) is flagged and the verdict becomes "review". It declines to judge with fewer than 4 shared holes. The 1.2 mm tolerance is calibrated on the simulator and a marker-dot pair, **not yet on real punched holes**.
+- **Paid status:** press **💰 Mark as paid** after handing over the money. It adds a `paid` receipt to the hash-chained ledger, so the payment itself is tamper-evident. Scanning the same card again shows **"Already paid on …"**, and warns if the records now show a different amount than was paid.
+- **Carry-forward balance:** if a worker took more in advances than they earned, the debt is carried onto next month's card (one click from the result, or automatically for members when bulk-creating cards). It is printed on the card and locked into its code, so it cannot be changed later. Old cards are unaffected: a card with no balance is encoded byte-for-byte as before (format SF1); a card with a balance uses SF2.
+- **Income proof:** turns the agreed, hash-chained payday records into a one-page certificate (months, days, agreed pay, what was paid) with a QR. A verifier checks the pasted code against a ledger export: the chain must be intact and every figure must match a receipt, so an inflated figure, an invented month, or an edited ledger all fail. It is a record both sides agreed on, not an employer-signed payslip.
+- **Calibrate:** upload photos of really punched cards and it measures hole contrast, hole size and how well the two halves line up, then suggests a hole threshold and a punched-together tolerance. Nothing changes until you press **Apply**, and **Reset** restores the defaults.
 - **Members:** a roster of the people you make cards for, with the count of cards created per member, all-time and for a chosen month. Add a member once (name, employer, wage, advance token, currency, language), then make their card in one click, or press **Create N cards + one PDF** to make every missing card for the month at once (one unique card each, one A4 page each, saved automatically, never duplicated).
 - **Crew payroll:** scan each worker, add them to one sheet with agreed pay and the exact notes to hand each person, plus the total cash and note mix to bring. Disputed amounts are excluded. CSV export and print.
 - **Story mode:** a narrated, auto-playing 1834 → today sequence with real scanner runs, ending with the forged half burning.
@@ -63,6 +67,11 @@ Pages: **Home** (with a QR to open it on a phone), **Members**, **Crew**, **🎃
 | Outside the envelope a wrong reading always carries a warning or "unsure" | `scan.test.ts` |
 | Editing, removing or reordering any ledger receipt breaks the hash chain at the right place | `store-ai.test.ts` |
 | Holes punched together are never flagged, even with a 1.2 mm / 0.5° stacking error; a separately made hole never passes as clean | `align.test.ts` |
+| Cards with no balance encode to exactly the old SF1 bytes and code; old payloads still decode; SF2 round-trips; editing the carried amount in a printed QR is detected | `carry.test.ts` |
+| Net pay including a carried balance is exact in every view; a debt is carried only from the previous month's latest scan, never from payment records | `carry.test.ts` |
+| Paid status is per card and month, the latest payment wins, a changed amount is flagged, and a payment record cannot be edited without breaking the chain | `settle-cert.test.ts` |
+| Certificates verify against their own ledger; inflated figures, invented months, altered totals, and edited or deleted receipts all fail | `settle-cert.test.ts` |
+| Calibration suggests a threshold between punched and blank brightness and a tolerance covering honest stacking, and declines to invent numbers without data | `calibrate.test.ts` |
 | Members: matching ignores case and never crosses employers; bulk creation makes exactly one card per member without one that month, with unique ids, and never duplicates on re-run; per-member counts add up | `members.test.ts` |
 | Cash notes + remainder equal the amount exactly; combined crew cash is exact | `cash.test.ts` |
 | Cloud AI prompt never contains names or card ids; offline explanation always states the sum and disputed days; AI failure falls back | `store-ai.test.ts` |

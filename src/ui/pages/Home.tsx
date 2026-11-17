@@ -56,7 +56,7 @@ export function Home({ go }: { go: (r: string) => void }) {
           ))}
           <text x="30" y="44" fontSize="13" fontWeight="700" fill="#231f1a" fontFamily="system-ui">STOCK · worker keeps</text>
           <text x="30" y="270" fontSize="13" fontWeight="700" fill="#231f1a" fontFamily="system-ui">FOIL · employer keeps</text>
-          <text x="210" y="154" fontSize="11" textAnchor="middle" fill="#7a1f1f" fontFamily="system-ui">✂ the cut is the signature</text>
+          <text x="210" y="156" fontSize="12" fontWeight="700" textAnchor="middle" fill="#ffd9a8" fontFamily="system-ui" style={{ paintOrder: 'stroke' }} stroke="#14080a" strokeWidth="3">✂ the cut is the signature</text>
         </svg>
       </section>
 

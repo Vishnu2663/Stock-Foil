@@ -55,3 +55,19 @@ A tamper-proof paper work record that worker and employer each hold half of, ver
 - R11.2 A card SHALL belong to a member when worker name and employer match, ignoring case and spacing, so no extra data is printed on the card.
 - R11.3 WHEN bulk creation is requested for a month THE SYSTEM SHALL create exactly one new card per member who has none for that month, each with a unique id, and SHALL NOT create duplicates when repeated.
 - R11.4 THE SYSTEM SHALL export the bulk cards as one multi-page A4 PDF.
+
+## R12 Paid / settled status
+- R12.1 WHEN a payment is recorded THE SYSTEM SHALL append a `paid` receipt to the hash-chained ledger.
+- R12.2 WHEN a card already marked paid is scanned again THE SYSTEM SHALL say so, and SHALL warn if the agreed amount now differs from the amount paid.
+
+## R13 Carry-forward balance
+- R13.1 A card MAY carry a balance brought forward (negative = worker owes). It SHALL be printed on the card, included in the pay arithmetic, and bound into the card code.
+- R13.2 Cards without a balance SHALL encode to the original SF1 bytes and card code, so cards already printed keep working.
+- R13.3 WHEN a month's agreed net is negative THE SYSTEM SHALL offer next month's card with that balance, and bulk creation SHALL apply it automatically.
+
+## R14 Income proof
+- R14.1 THE SYSTEM SHALL build a certificate from agreed ledger receipts only (never disputed amounts), with a QR holding the figures and the ledger head.
+- R14.2 Verification SHALL fail if the ledger chain is broken, a figure does not match a receipt, a month has no receipt, or totals do not add up.
+
+## R15 Calibration
+- R15.1 THE SYSTEM SHALL measure hole contrast, hole size and half-to-half alignment from uploaded photos and suggest thresholds, applying them only on request and allowing a reset.

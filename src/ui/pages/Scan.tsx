@@ -34,7 +34,7 @@ function HalfPreview({ c }: { c: Captured }) {
 }
 
 export function Scan({ preset }: { preset?: Slots }) {
-  const { t, toast } = useApp();
+  const { t, toast, settings } = useApp();
   const [slots, setSlots] = useState<Slots>(preset ?? {});
   const [busy, setBusy] = useState(false);
   const [cam, setCam] = useState(false);
@@ -47,7 +47,7 @@ export function Scan({ preset }: { preset?: Slots }) {
   const ingest = async (photo: RGBA) => {
     setBusy(true);
     setMsg('');
-    const scan = await scanPhotoAsync(photo);
+    const scan = await scanPhotoAsync(photo, settings.calibration.punchRatio ? { punchRatio: settings.calibration.punchRatio } : undefined);
     setBusy(false);
     if (scan.halves.length === 0) {
       setMsg(scan.foreign.length ? 'That QR code is not a Stock & Foil card.' : 'No Stock & Foil card found. Place the half flat on a dark table, fill the frame, and add light.');

@@ -111,7 +111,7 @@ function rigidFit(ps: Pair2[]) {
  * same place on each; one added or made separately is off by more than normal
  * stacking error. Each hole is judged against a rigid fit made WITHOUT it.
  */
-export function checkAlignment(stock: HalfScan, foil: HalfScan): Alignment {
+export function checkAlignment(stock: HalfScan, foil: HalfScan, tolMm: number = ALIGN_TOL_MM): Alignment {
   const spec = stock.payload.spec;
   const cells = [...dayCells(spec.year, spec.month), ...advCells()];
   const ps: Pair2[] = [];
@@ -123,23 +123,43 @@ export function checkAlignment(stock: HalfScan, foil: HalfScan): Alignment {
   }
   if (ps.length < MIN_ALIGN_HOLES) return { checked: false, shared: ps.length, flagged: [], maxResidualMm: 0 };
   const flagged: Alignment['flagged'] = [];
-  let maxR = 0;
+  const key = (p: Pair2) => `${p.kind}${p.n}`;
   // A hole so far from its target that it overflows the measuring window is suspicious by itself.
-  const clippedKey = new Set<string>();
+  const clipped = new Set<string>();
   for (const c of cells) {
     for (const h of [stock, foil]) {
       const r = (c.kind === 'day' ? h.days : h.adv).find((x) => x.n === c.n);
-      if (r?.punched && r.clipped) clippedKey.add(`${c.kind}${c.n}`);
+      if (r?.punched && r.clipped) clipped.add(`${c.kind}${c.n}`);
     }
   }
-  ps.forEach((p, i) => {
-    const fit = rigidFit(ps.filter((_, j) => j !== i));
-    const q = fit(p.a);
+  const resid = (set: Pair2[], p: Pair2) => {
+    const rest = set.filter((q) => q !== p);
+    const q = rigidFit(rest)(p.a);
+    return Math.hypot(q.x - p.b.x, q.y - p.b.y);
+  };
+  // Robust fit: take clipped holes out first, then repeatedly remove the single worst outlier
+  // and re-fit, so one separately made hole cannot drag its honest neighbours out of tolerance.
+  let act = ps.filter((p) => !clipped.has(key(p)));
+  const removed: Pair2[] = ps.filter((p) => clipped.has(key(p)));
+  while (act.length >= MIN_ALIGN_HOLES) {
+    let worst: Pair2 | null = null;
+    let wr = 0;
+    for (const p of act) {
+      const r = resid(act, p);
+      if (r > wr) { wr = r; worst = p; }
+    }
+    if (!worst || wr <= tolMm) break;
+    removed.push(worst);
+    act = act.filter((p) => p !== worst);
+  }
+  // the remaining holes define the stacking; judge every removed hole against that fit
+  const finalFit = act.length >= 3 ? rigidFit(act) : null;
+  for (const p of removed) {
+    const q = finalFit ? finalFit(p.a) : p.a;
     const r = Math.hypot(q.x - p.b.x, q.y - p.b.y);
-    maxR = Math.max(maxR, r);
-    const clip = clippedKey.has(`${p.kind}${p.n}`);
-    if (r > ALIGN_TOL_MM || clip) flagged.push({ kind: p.kind, n: p.n, residualMm: Math.max(r, clip ? 3 : 0) });
-  });
+    flagged.push({ kind: p.kind, n: p.n, residualMm: Math.max(r, clipped.has(key(p)) ? 3 : 0) });
+  }
+  const maxR = act.length >= MIN_ALIGN_HOLES ? Math.max(...act.map((p) => resid(act, p))) : 0;
   return { checked: true, shared: ps.length, flagged, maxResidualMm: maxR };
 }
 
@@ -149,7 +169,12 @@ function marks(r: CellReading[], n: number): boolean[] {
   return out;
 }
 
-export function verifyPair(stock: HalfScan, foil: HalfScan): PairResult {
+export interface VerifyOptions {
+  /** override the punched-together tolerance (mm), e.g. from calibration */
+  alignTolMm?: number;
+}
+
+export function verifyPair(stock: HalfScan, foil: HalfScan, opts: VerifyOptions = {}): PairResult {
   const ss = stock.payload.spec;
   const fs = foil.payload.spec;
   const checks: PairResult['checks'] = [];
@@ -173,7 +198,7 @@ export function verifyPair(stock: HalfScan, foil: HalfScan): PairResult {
   );
   checks.push({ label: 'Every punch is on both halves', ok: cmp.consistent, detail: cmp.consistent ? 'No one-sided holes' : `${cmp.stockOnlyDays.length + cmp.foilOnlyDays.length} day(s), ${cmp.stockOnlyAdv.length + cmp.foilOnlyAdv.length} advance(s) on one half only` });
 
-  const alignment = checkAlignment(stock, foil);
+  const alignment = checkAlignment(stock, foil, opts.alignTolMm ?? ALIGN_TOL_MM);
   checks.push({
     label: 'Holes were punched through both halves together',
     ok: alignment.checked ? alignment.flagged.length === 0 : null,
@@ -184,7 +209,7 @@ export function verifyPair(stock: HalfScan, foil: HalfScan): PairResult {
         : `Look separately made: ${alignment.flagged.map((f) => (f.kind === 'day' ? `day ${f.n}` : `advance ${f.n}`) + ` (${f.residualMm.toFixed(1)} mm off)`).join(', ')}`,
   });
 
-  const pay = computePay(cmp, ss.rateMinor, ss.advMinor);
+  const pay = computePay(cmp, ss.rateMinor, ss.advMinor, ss.carryMinor);
   const pairOk = stock.payload.role === 'S' && foil.payload.role === 'F' && sameId && codesOk && edge.verdict !== 'mismatch';
   // A pose built from fewer than 3 corner squares cannot be trusted to place the punch targets.
   const poseOk = Math.min(stock.fiducialsFound, foil.fiducialsFound) >= 3;

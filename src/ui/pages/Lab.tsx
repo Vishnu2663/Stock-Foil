@@ -42,6 +42,7 @@ const arbCond = fc.record({
 
 export function Lab() {
   const [days, setDays] = useState('2, 3, 4, 5, 9, 10');
+  const [carry, setCarry] = useState(0);
   const [tamper, setTamper] = useState<Tamper>('none');
   const [c, setC] = useState({ angle: 8, blur: 0.5, noise: 0.015, gradient: 0.2, tilt: 0.0003, exposure: 0.95 });
   const [pair, setPair] = useState<{ stock: Captured; foil: Captured } | null>(null);
@@ -50,7 +51,7 @@ export function Lab() {
   const [stress, setStress] = useState<{ n: number; done: number; exact: number; flagged: number; wrong: number; ms: number } | null>(null);
   const [stopFlag, setStopFlag] = useState({ stop: false });
 
-  const spec = newCardSpec({ id: 'LAB' + randomId(5), year: 2026, month: 11, rateMinor: 50000, advMinor: 10000, worker: 'Lab Worker', employer: 'Lab Employer' });
+  const spec = newCardSpec({ id: 'LAB' + randomId(5), year: 2026, month: 11, rateMinor: 50000, advMinor: 10000, worker: 'Lab Worker', employer: 'Lab Employer', carryMinor: Math.round(carry * 100) });
 
   const go = async () => {
     setBusy(true);
@@ -138,6 +139,7 @@ export function Lab() {
         <div className="card">
           <h3>Scenario</h3>
           <div className="field"><label>Days punched (1–30)</label><input value={days} onChange={(e) => setDays(e.target.value)} /></div>
+          <div className="field"><label>Balance brought forward (negative = worker owes)</label><input type="number" step="any" value={carry} onChange={(e) => setCarry(Number(e.target.value))} /></div>
           <div className="field">
             <label>Tampering</label>
             <select value={tamper} onChange={(e) => setTamper(e.target.value as Tamper)}>{TAMPERS.map((t) => <option key={t.id} value={t.id}>{t.label}</option>)}</select>

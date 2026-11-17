@@ -87,6 +87,7 @@ export function anonymisedFacts(r: PairResult): string {
     `Days only on worker half: ${c.stockOnlyDays.join(', ') || 'none'}`,
     `Days only on employer half: ${c.foilOnlyDays.join(', ') || 'none'}`,
     `Advances agreed: ${c.agreedAdv.length}; only worker: ${c.stockOnlyAdv.length}; only employer: ${c.foilOnlyAdv.length}`,
+    ...(p.agreed.carryMinor ? [`Balance brought forward from last month: ${formatMoney(p.agreed.carryMinor, r.spec.currency)} (negative means the worker still owed it)`] : []),
     `Agreed pay: ${formatMoney(p.agreed.netMinor, r.spec.currency)}; amount in dispute: ${formatMoney(p.disputedMinor, r.spec.currency)}`,
     `Verdict: ${r.verdict}`,
   ].join('\n');
@@ -121,6 +122,7 @@ export function offlineExplain(r: PairResult, lang: string): string {
   else {
     lines.push(`${a.days} ${t(lang, 'slipDays')} × ${m(a.rateMinor)} = ${m(a.grossMinor)}.`);
     if (a.advances) lines.push(`− ${a.advances} ${t(lang, 'slipAdvances')} (${m(a.advancesMinor)}).`);
+    if (a.carryMinor) lines.push(`${a.carryMinor < 0 ? '−' : '+'} ${t(lang, 'slipCarry')} (${m(Math.abs(a.carryMinor))}).`);
     lines.push(a.netMinor >= 0 ? `${t(lang, 'slipTotal')}: ${m(a.netMinor)}.` : `${t(lang, 'slipOwed')}: ${m(-a.netMinor)}.`);
     const c = r.cmp;
     const one = [...c.stockOnlyDays, ...c.foilOnlyDays];

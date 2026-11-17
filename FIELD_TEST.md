@@ -41,6 +41,16 @@ Everything so far is verified on simulated photos and a rasterised print. This c
 ## 6. Durability
 - [ ] Fold, carry in a pocket for a week, get slightly damp. Does the cut edge still fit and the QR still scan?
 
+## 7. Calibrate on your own cards
+- [ ] Punch 2 to 4 cards **with a real hole punch**, both halves stacked and punched together (at least 6 holes in all).
+- [ ] Photograph both halves of each, open **Calibrate**, upload the photos, and read the report. Check hole separation is clearly positive and the worst half-to-half alignment is small.
+- [ ] Press **Apply to this device**, then scan the same cards on **Payday scan** and confirm nothing is flagged as "separately made". Use **Reset to defaults** to undo.
+- [ ] Send the report (the ⬇ Report button) so the default tolerances can be set from real data.
+
+## 8. Money flow
+- [ ] Mark a scanned pair **paid**, then scan the same cards again: the app must say "already paid".
+- [ ] Give a worker more advances than earnings: confirm the next month's card is offered with the balance, and that it prints on the card and appears on the next scan.
+
 ## What to do with failures
 - Scan fails on a real photo: save the photo, add it as a fixture, and tune thresholds in `src/vision/detect.ts` (punch ratio, window sizes). Re-run `SF_RUNS=100 npm test`.
 - Hole position error larger than the circle: enlarge `HOLE_R` or the cell size in `src/core/layout.ts` (layout is shared by print and scan, so both update together).

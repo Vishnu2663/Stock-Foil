@@ -19,6 +19,8 @@ export interface Settings {
   customModel: string;
   customKey: string;
   speakRate: number;
+  /** thresholds measured from real photos (Calibrate page); unset = defaults */
+  calibration: { punchRatio?: number; alignTolMm?: number };
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -29,6 +31,7 @@ export const DEFAULT_SETTINGS: Settings = {
   customModel: 'meta-llama/llama-3.3-70b-instruct:free',
   customKey: '',
   speakRate: 0.9,
+  calibration: {},
 };
 
 function read<T>(key: string, fallback: T): T {

@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { breakdown, combine, notesTotalMinor } from '../../core/cash';
 import { formatMoney } from '../../core/card';
-import { clearCrew, loadCrew, removeCrew } from '../../store';
+import { clearCrew, loadCrew, loadReceipts, removeCrew } from '../../store';
+import { paymentStatus } from '../../core/settlement';
 import { useApp } from '../ctx';
 import { download, printArea } from '../imageIO';
 
@@ -10,6 +11,7 @@ const label = (v: string) => ({ 'genuine-consistent': '✅ agreed', 'genuine-dis
 export function Crew({ go }: { go: (r: string) => void }) {
   const { lang } = useApp();
   const [rows, setRows] = useState(loadCrew());
+  const receipts = loadReceipts();
   const currencies = [...new Set(rows.map((r) => r.currency))];
   const money = (v: number, c: string) => formatMoney(v, c, lang);
 
@@ -52,7 +54,7 @@ export function Crew({ go }: { go: (r: string) => void }) {
                       <td>{r.worker || '—'}<div className="small muted">{r.month}</div></td>
                       <td>{r.agreedDays}</td>
                       <td>{r.advances}</td>
-                      <td>{label(r.verdict)}{r.disputedMinor ? <div className="small" style={{ color: 'var(--amber)' }}>{money(r.disputedMinor, r.currency)} in dispute</div> : null}</td>
+                      <td>{label(r.verdict)}{paymentStatus(receipts, r.cardId, r.month, r.netMinor).paid ? <div className="small" style={{ color: 'var(--green)' }}>💰 already paid</div> : null}{r.disputedMinor ? <div className="small" style={{ color: 'var(--amber)' }}>{money(r.disputedMinor, r.currency)} in dispute</div> : null}</td>
                       <td><b>{money(pay, r.currency)}</b>{r.netMinor < 0 ? <div className="small" style={{ color: 'var(--bad)' }}>owes {money(-r.netMinor, r.currency)}</div> : null}</td>
                       <td className="small" style={{ textAlign: 'left' }}>{b.notes.map((n) => `${n.count}×${n.denom}`).join('  ') || '—'}{b.remainderMinor ? ` (+${money(b.remainderMinor, r.currency)} coins)` : ''}</td>
                       <td className="no-print"><button className="sm ghost" onClick={() => { removeCrew(r.id); setRows(loadCrew()); }}>✕</button></td>

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { RGBA } from '../../vision/image';
 import { scanPhotoAsync } from '../scanAsync';
 import { videoFrameToRGBA } from '../imageIO';
+import { useApp } from '../ctx';
 
 /**
  * Live camera that captures by itself. About twice a second a frame goes through
@@ -11,6 +12,8 @@ import { videoFrameToRGBA } from '../imageIO';
  * the parent has both halves, so the user just shows one half, then the other.
  */
 export function Camera({ have, onCapture, onClose }: { have: { S: boolean; F: boolean }; onCapture: (img: RGBA, role: 'S' | 'F') => void; onClose: () => void }) {
+  const { settings } = useApp();
+  const calib = useRef(settings.calibration);
   const vref = useRef<HTMLVideoElement>(null);
   const [hint, setHint] = useState('Starting camera…');
   const [tone, setTone] = useState<'idle' | 'warn' | 'ok'>('idle');
@@ -44,7 +47,7 @@ export function Camera({ have, onCapture, onClose }: { have: { S: boolean; F: bo
           // Scan at full capture resolution (small/skewed QR codes need the pixels) and
           // capture this very frame if it is good, so what is checked is what is saved.
           const frame = videoFrameToRGBA(v, 1600);
-          scanPhotoAsync(frame)
+          scanPhotoAsync(frame, calib.current.punchRatio ? { punchRatio: calib.current.punchRatio } : undefined)
             .then((s) => {
               const need = (r: 'S' | 'F') => !haveRef.current[r];
               const h = s.halves.find((x) => need(x.payload.role)) ?? s.halves[0];

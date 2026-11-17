@@ -1,10 +1,10 @@
 import { Fragment, useMemo, useState } from 'react';
 import { formatMoney, type CardSpec } from '../../core/card';
-import { bulkSpecs, cardsOf, hasCardForMonth, memberStats, newMember } from '../../core/members';
+import { bulkSpecs, cardsOf, carryFor, hasCardForMonth, memberStats, newMember } from '../../core/members';
 import { LANGS, monthName } from '../../i18n';
 import { sheetPdf, sheetsPdf } from '../../render/pdf';
 import { sheetSvg } from '../../render/sheet';
-import { addMember, loadCards, loadMembers, removeMember, saveCards } from '../../store';
+import { addMember, loadCards, loadMembers, loadReceipts, removeMember, saveCards } from '../../store';
 import { useApp } from '../ctx';
 
 const CURRENCIES = ['INR', 'USD', 'EUR', 'GBP', 'KES', 'NGN', 'BDT', 'PKR', 'NPR', 'PHP', 'IDR', 'MXN', 'BRL', 'ZAR'];
@@ -40,7 +40,8 @@ export function Members({ newCardFor }: { go: (r: string) => void; newCardFor: (
   };
 
   const bulk = async () => {
-    const specs = bulkSpecs(members, cards, year, month);
+    const receipts = loadReceipts();
+    const specs = bulkSpecs(members, cards, year, month, (m) => carryFor(m, cards, receipts, year, month));
     if (!specs.length) return toast('Everyone already has a card for this month');
     setBusy(true);
     saveCards(specs);
@@ -84,7 +85,7 @@ export function Members({ newCardFor }: { go: (r: string) => void; newCardFor: (
         <div className="card">
           <h3>Create cards for everyone</h3>
           <div className="field"><label>Month</label><input type="month" value={ym} onChange={(e) => setYm(e.target.value)} /></div>
-          <p className="sans small">{missing.length === 0 ? (members.length ? '✅ Everyone already has a card for this month.' : 'Add members first.') : <>Missing a card this month: <b>{missing.map((m) => m.name).join(', ')}</b></>}</p>
+          <p className="sans small">{missing.length === 0 ? (members.length ? '✅ Everyone already has a card for this month.' : 'Add members first.') : <>Missing a card this month: <b>{missing.map((m) => { const c = carryFor(m, cards, loadReceipts(), year, month); return c ? `${m.name} (owes ${formatMoney(-c, m.currency, lang)} from last month)` : m.name; }).join(', ')}</b></>}</p>
           <button className="primary" onClick={bulk} disabled={busy || missing.length === 0}>{busy ? <span className="spin" /> : '⬇'} Create {missing.length} card{missing.length === 1 ? '' : 's'} + one PDF</button>
           <p className="small muted sans" style={{ marginTop: 8 }}>Makes one new unique card (own wavy cut) per member, saves them, and downloads a single PDF with one A4 page each. Print at 100% / Actual size.</p>
         </div>
@@ -110,7 +111,7 @@ export function Members({ newCardFor }: { go: (r: string) => void; newCardFor: (
                       <td><button className="sm ghost" onClick={() => setOpen(open === m.id ? null : m.id)}>{mine.length} {open === m.id ? '▴' : '▾'}</button></td>
                       <td>{has ? <span className="pill ok">✓ has card</span> : <span className="pill warn">no card</span>}</td>
                       <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
-                        <button className="sm" onClick={() => newCardFor({ worker: m.name, employer: m.employer, rateMinor: m.rateMinor, advMinor: m.advMinor, currency: m.currency, lang: m.lang, year, month })}>＋ Card</button>{' '}
+                        <button className="sm" onClick={() => newCardFor({ worker: m.name, employer: m.employer, rateMinor: m.rateMinor, advMinor: m.advMinor, currency: m.currency, lang: m.lang, year, month, carryMinor: carryFor(m, cards, loadReceipts(), year, month) })}>＋ Card</button>{' '}
                         <button className="sm ghost" title="Remove member (their saved cards stay)" onClick={() => { if (confirm(`Remove ${m.name}? Their saved cards stay in the Ledger.`)) { removeMember(m.id); refresh(); } }}>✕</button>
                       </td>
                     </tr>

@@ -1,4 +1,4 @@
-import { scanPhoto, type PhotoScan } from '../vision/detect';
+import { scanPhoto, type DetectOptions, type PhotoScan } from '../vision/detect';
 import type { RGBA } from '../vision/image';
 
 /** Runs the scanner in a Web Worker so the UI never freezes; falls back to the main thread. */
@@ -33,12 +33,12 @@ function getWorker(): Worker | null {
   return worker;
 }
 
-export function scanPhotoAsync(photo: RGBA): Promise<PhotoScan> {
+export function scanPhotoAsync(photo: RGBA, opts?: DetectOptions): Promise<PhotoScan> {
   const w = getWorker();
-  if (!w) return new Promise((res) => setTimeout(() => res(scanPhoto(photo)), 30));
+  if (!w) return new Promise((res) => setTimeout(() => res(scanPhoto(photo, opts)), 30));
   return new Promise<PhotoScan>((ok, fail) => {
     const id = nextId++;
     pending.set(id, { ok, fail });
-    w.postMessage({ id, photo });
-  }).catch(() => new Promise<PhotoScan>((res) => setTimeout(() => res(scanPhoto(photo)), 30)));
+    w.postMessage({ id, photo, opts });
+  }).catch(() => new Promise<PhotoScan>((res) => setTimeout(() => res(scanPhoto(photo, opts)), 30)));
 }

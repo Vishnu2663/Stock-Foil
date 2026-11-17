@@ -33,6 +33,7 @@ const en: Dict = {
   perDay: 'day',
   cardCode: 'Card',
   advanceRow: 'Advances taken (each = {v})',
+  carryRow: 'Balance brought forward: {v}',
   cutHere: 'cut along the wavy line',
   printNote: 'Print at 100% on A4, cut on the wave, punch holes through both halves together.',
   // nav
@@ -53,6 +54,7 @@ const en: Dict = {
   slipOwed: 'worker owes (carry forward)',
   slipDisputed: 'In dispute',
   slipAgreedNote: 'Counted only days punched on BOTH halves.',
+  slipCarry: 'balance brought forward',
   slipSpeak: 'Read aloud',
   // verdicts
   vGenuine: 'Genuine pair. Both records agree.',
@@ -89,6 +91,8 @@ const hi: Dict = {
   slipRate: 'प्रति दिन',
   slipGross: 'कमाई',
   slipAdvances: 'एडवांस लिया',
+  slipCarry: 'पिछला बकाया',
+  carryRow: 'पिछला बकाया: {v}',
   slipTotal: 'देय रकम',
   slipOwed: 'मज़दूर पर बकाया (आगे जोड़ें)',
   slipDisputed: 'विवाद में',
@@ -157,6 +161,8 @@ const es: Dict = {
   slipRate: 'por día',
   slipGross: 'ganado',
   slipAdvances: 'adelantos recibidos',
+  slipCarry: 'saldo del mes anterior',
+  carryRow: 'Saldo del mes anterior: {v}',
   slipTotal: 'A PAGAR',
   slipOwed: 'el trabajador debe (pasa al mes siguiente)',
   slipDisputed: 'En disputa',
