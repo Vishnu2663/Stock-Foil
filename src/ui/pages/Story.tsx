@@ -65,14 +65,15 @@ function Embers({ on }: { on: boolean }) {
 const tongue = (cx: number, base: number, w: number, h: number, lean: number) =>
   `M${cx - w},${base} C${cx - w * 1.05},${base - h * 0.35} ${cx - w * 0.35 + lean * 0.4},${base - h * 0.6} ${cx + lean},${base - h} C${cx + w * 0.3 + lean * 0.5},${base - h * 0.58} ${cx + w * 1.05},${base - h * 0.32} ${cx + w},${base}Z`;
 const TONGUES = [
-  [128, 62, 70, -6], [168, 50, 104, 5], [208, 58, 86, -4], [248, 66, 128, 3], [292, 54, 96, -5], [334, 60, 112, 6], [372, 48, 78, -3], [404, 38, 58, 4],
+  [112, 30, 52, -4], [138, 36, 84, 6], [166, 32, 62, -5], [192, 40, 108, 4], [222, 34, 80, -6], [250, 44, 138, 3], [280, 36, 96, -4],
+  [308, 40, 118, 6], [336, 32, 74, -3], [362, 38, 100, 5], [390, 30, 66, -5], [414, 26, 46, 3],
 ];
 
 function Fire() {
   const calm = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const base = 238;
   return (
-    <svg viewBox="0 0 520 260" className="haunt-art" role="img" aria-label="Tally sticks burning in a furnace beneath the Houses of Parliament">
+    <svg viewBox="0 0 520 296" className="haunt-art" role="img" aria-label="Tally sticks burning in a furnace beneath the Houses of Parliament">
       <defs>
         <radialGradient id="glow" cx="50%" cy="100%" r="80%"><stop offset="0" stopColor="#ff9a2e" stopOpacity=".75" /><stop offset=".5" stopColor="#c2310a" stopOpacity=".3" /><stop offset="1" stopColor="#ff4d00" stopOpacity="0" /></radialGradient>
         <linearGradient id="fOuter" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stopColor="#ff5a0a" /><stop offset=".55" stopColor="#d12c05" stopOpacity=".9" /><stop offset="1" stopColor="#7a0f02" stopOpacity="0" /></linearGradient>
@@ -81,17 +82,17 @@ function Fire() {
         <linearGradient id="coal" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#ff7a18" /><stop offset=".4" stopColor="#a8280a" /><stop offset="1" stopColor="#2a0a05" /></linearGradient>
         {/* turns clean teardrops into licking, ragged flames; the noise drifts upward over time */}
         <filter id="lick" x="-20%" y="-40%" width="140%" height="160%" colorInterpolationFilters="sRGB">
-          <feTurbulence type="fractalNoise" baseFrequency="0.018 0.075" numOctaves="3" seed="4" result="n">
-            {!calm && <animate attributeName="baseFrequency" dur="5s" values="0.018 0.075;0.026 0.11;0.018 0.075" repeatCount="indefinite" />}
+          <feTurbulence type="fractalNoise" baseFrequency="0.035 0.05" numOctaves="2" seed="4" result="n">
+            {!calm && <animate attributeName="baseFrequency" dur="5s" values="0.035 0.05;0.045 0.075;0.035 0.05" repeatCount="indefinite" />}
             {!calm && <animate attributeName="seed" dur="0.9s" values="2;5;3;7;4;6;2" calcMode="discrete" repeatCount="indefinite" />}
           </feTurbulence>
-          <feDisplacementMap in="SourceGraphic" in2="n" scale="26" xChannelSelector="R" yChannelSelector="G" result="d" />
-          <feGaussianBlur in="d" stdDeviation="1.6" />
+          <feDisplacementMap in="SourceGraphic" in2="n" scale="20" xChannelSelector="R" yChannelSelector="G" result="d" />
+          <feGaussianBlur in="d" stdDeviation="1.1" />
         </filter>
         <filter id="soft"><feGaussianBlur stdDeviation="7" /></filter>
         <filter id="haze" x="-10%" y="-10%" width="120%" height="120%"><feTurbulence type="fractalNoise" baseFrequency="0.01 0.05" numOctaves="2" seed="9"><animate attributeName="baseFrequency" dur="6s" values="0.01 0.05;0.014 0.07;0.01 0.05" repeatCount="indefinite" /></feTurbulence><feDisplacementMap in="SourceGraphic" scale="6" /></filter>
       </defs>
-      <rect width="520" height="260" fill="#12060a" />
+      <rect width="520" height="296" fill="#12060a" />
       <ellipse cx="260" cy="262" rx="320" ry="190" fill="url(#glow)" className="flick" />
       {/* Parliament silhouette, seen through the heat */}
       <g filter={calm ? undefined : 'url(#haze)'}>
@@ -100,9 +101,9 @@ function Fire() {
           <rect x="120" y="90" width="28" height="60" /><polygon points="120,90 134,60 148,90" />
           <rect x="372" y="70" width="34" height="90" /><polygon points="372,70 389,32 406,70" />
           <rect x="250" y="110" width="22" height="40" /><polygon points="250,110 261,86 272,110" />
-          {Array.from({ length: 14 }, (_, i) => <rect key={i} x={104 + i * 24} y={150} width="8" height="14" fill="#ffb347" opacity={i % 3 === 0 ? 0.85 : 0.3} className="flick2" style={{ animationDelay: `${(i * 0.37) % 1.3}s` }} />)}
         </g>
       </g>
+      <g>{Array.from({ length: 14 }, (_, i) => <rect key={i} x={104 + i * 24} y={150} width="8" height="14" fill="#ffb347" opacity={i % 3 === 0 ? 0.85 : 0.3} className="flick2" style={{ animationDelay: `${(i * 0.37) % 1.3}s` }} />)}</g>
       {/* furnace glow behind the flames */}
       <g filter="url(#soft)" opacity=".85" className="flick">
         {TONGUES.map(([cx, w, h, lean], i) => <path key={i} d={tongue(cx, base, w * 1.1, h * 0.9, lean)} fill="#ff5a0a" />)}
@@ -120,15 +121,15 @@ function Fire() {
       {/* tally sticks sliding in, glowing and charring as they reach the fire */}
       {[0, 1, 2].map((i) => (
         <g key={i} className="stick" style={{ animationDelay: `${i * 1.1}s` }}>
-          <rect x="30" y={196 + i * 8} width="120" height="9" rx="2" fill="#c9a66b" />
-          {[0, 1, 2, 3, 4, 5].map((k) => <rect key={k} x={44 + k * 17} y={196 + i * 8} width="3" height="9" fill="#6b4a1f" />)}
-          <rect className="stick-burn" x="30" y={196 + i * 8} width="120" height="9" rx="2" fill="#ff7a18" style={{ animationDelay: `${i * 1.1}s` }} />
+          <rect x="30" y={214 + i * 9} width="120" height="9" rx="2" fill="#c9a66b" />
+          {[0, 1, 2, 3, 4, 5].map((k) => <rect key={k} x={44 + k * 17} y={214 + i * 9} width="3" height="9" fill="#6b4a1f" />)}
+          <rect className="stick-burn" x="30" y={214 + i * 9} width="120" height="9" rx="2" fill="#ff7a18" style={{ animationDelay: `${i * 1.1}s` }} />
         </g>
       ))}
       {/* coal bed */}
-      <rect x="86" y={base - 2} width="348" height="26" rx="10" fill="url(#coal)" />
+      <rect x="86" y={base - 2} width="348" height="24" rx="10" fill="url(#coal)" />
       <g className="flick2">{Array.from({ length: 16 }, (_, i) => <ellipse key={i} cx={104 + i * 21 + (i % 2) * 5} cy={base + 6 + (i % 3) * 4} rx={7 + (i % 3) * 2} ry="2.6" fill={i % 2 ? '#ffb347' : '#ff7a18'} opacity={0.55 + (i % 3) * 0.15} style={{ animationDelay: `${(i * 0.21) % 1.2}s` }} />)}</g>
-      <text x="260" y="256" textAnchor="middle" fontSize="12.5" fill="#ffe2b8" fontFamily="system-ui" opacity=".9">October 1834 · the furnaces under the House of Lords</text>
+      <rect x="0" y="266" width="520" height="30" fill="#0c0407" /><rect x="0" y="266" width="520" height="1.5" fill="#ff7a18" opacity=".45" /><text x="260" y="285" textAnchor="middle" fontSize="12.5" letterSpacing=".4" fill="#ffe2b8" fontFamily="system-ui">October 1834 · the furnaces under the House of Lords</text>
     </svg>
   );
 }
@@ -147,7 +148,7 @@ function Split() {
 function CardArt() {
   return (
     <svg viewBox="0 0 520 260" className="haunt-art" role="img" aria-label="A printed card cut in two along a wavy line, with matching punched holes">
-      <rect width="520" height="260" fill="#14080a" />
+      <rect width="520" height="296" fill="#14080a" />
       <g className="half-top"><path d="M40 30 H480 V118 Q440 134 400 118 T320 120 T240 128 T160 116 T100 128 T40 118Z" fill="#fffaf0" stroke="#cdbb8f" /><text x="56" y="56" fontSize="14" fontWeight="700" fill="#231f1a" fontFamily="system-ui">STOCK · worker keeps</text>{[90, 170, 250, 330, 410].map((x) => <circle key={x} cx={x} cy={88} r={11} fill="#14080a" />)}</g>
       <g className="half-bot"><path d="M40 138 Q80 152 120 144 T200 138 T280 146 T360 138 T440 144 T480 138 V232 H40Z" fill="#f4ead2" stroke="#cdbb8f" /><text x="56" y="222" fontSize="14" fontWeight="700" fill="#231f1a" fontFamily="system-ui">FOIL · employer keeps</text>{[90, 170, 250, 330, 410].map((x) => <circle key={x} cx={x} cy={176} r={11} fill="#14080a" />)}</g>
     </svg>
