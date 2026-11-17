@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { hasVoiceFor, speak, speechSupported, stopSpeaking } from '../../ai/speech';
+import { hasVoiceFor, speak, speechSupported, stopSpeaking, voiceStatus, voicesFor } from '../../ai/speech';
 import { newCardSpec } from '../../core/card';
 import { newPairing } from '../../core/pairing';
 import { formatVerdict, STORY_LANGS, storyPack, type VerdictKind } from '../../i18n/story';
@@ -79,6 +79,8 @@ function Fire() {
         <linearGradient id="fOuter" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stopColor="#ff5a0a" /><stop offset=".55" stopColor="#d12c05" stopOpacity=".9" /><stop offset="1" stopColor="#7a0f02" stopOpacity="0" /></linearGradient>
         <linearGradient id="fMid" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stopColor="#ffb02e" /><stop offset=".6" stopColor="#ff7a14" stopOpacity=".95" /><stop offset="1" stopColor="#ff4d00" stopOpacity="0" /></linearGradient>
         <linearGradient id="fCore" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stopColor="#fffbe0" /><stop offset=".5" stopColor="#ffe27a" stopOpacity=".95" /><stop offset="1" stopColor="#ffc247" stopOpacity="0" /></linearGradient>
+        <linearGradient id="wood" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#f3dfae" /><stop offset=".5" stopColor="#d9b877" /><stop offset="1" stopColor="#a8803f" /></linearGradient>
+        <linearGradient id="hot" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stopColor="#ff7a18" stopOpacity="0" /><stop offset=".55" stopColor="#ff5a0a" stopOpacity=".6" /><stop offset="1" stopColor="#ffd070" /></linearGradient>
         <linearGradient id="coal" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#ff7a18" /><stop offset=".4" stopColor="#a8280a" /><stop offset="1" stopColor="#2a0a05" /></linearGradient>
         {/* turns clean teardrops into licking, ragged flames; the noise drifts upward over time */}
         <filter id="lick" x="-20%" y="-40%" width="140%" height="160%" colorInterpolationFilters="sRGB">
@@ -103,7 +105,12 @@ function Fire() {
           <rect x="250" y="110" width="22" height="40" /><polygon points="250,110 261,86 272,110" />
         </g>
       </g>
-      <g>{Array.from({ length: 14 }, (_, i) => <rect key={i} x={104 + i * 24} y={150} width="8" height="14" fill="#ffb347" opacity={i % 3 === 0 ? 0.85 : 0.3} className="flick2" style={{ animationDelay: `${(i * 0.37) % 1.3}s` }} />)}</g>
+      <g aria-hidden>
+        {Array.from({ length: 8 }, (_, i) => (
+          <path key={i} d={`M${112 + i * 41},166 v-14 a5,5 0 0 1 10,0 v14z`} fill="#ffeab0" stroke="#2a1a10" strokeWidth="1.2" opacity={i % 3 === 0 ? 0.7 : 0.32} className="flick2" style={{ animationDelay: `${(i * 0.37) % 1.3}s` }} />
+        ))}
+        <text x="430" y="132" textAnchor="end" fontSize="8.5" letterSpacing=".6" fill="#b9a384" fontFamily="system-ui" opacity=".85">PARLIAMENT · LIT WINDOWS</text>
+      </g>
       {/* furnace glow behind the flames */}
       <g filter="url(#soft)" opacity=".85" className="flick">
         {TONGUES.map(([cx, w, h, lean], i) => <path key={i} d={tongue(cx, base, w * 1.1, h * 0.9, lean)} fill="#ff5a0a" />)}
@@ -119,13 +126,21 @@ function Fire() {
         ))}
       </g>
       {/* tally sticks sliding in, glowing and charring as they reach the fire */}
-      {[0, 1, 2].map((i) => (
-        <g key={i} className="stick" style={{ animationDelay: `${i * 1.1}s` }}>
-          <rect x="30" y={214 + i * 9} width="120" height="9" rx="2" fill="#c9a66b" />
-          {[0, 1, 2, 3, 4, 5].map((k) => <rect key={k} x={44 + k * 17} y={214 + i * 9} width="3" height="9" fill="#6b4a1f" />)}
-          <rect className="stick-burn" x="30" y={214 + i * 9} width="120" height="9" rx="2" fill="#ff7a18" style={{ animationDelay: `${i * 1.1}s` }} />
-        </g>
-      ))}
+      {[0, 1].map((i) => {
+        const y = 196 + i * 20;
+        return (
+          <g key={i} className="stick" style={{ animationDelay: `${i * 1.6}s` }}>
+            <rect x="28" y={y + 2} width="150" height="15" rx="4" fill="#000" opacity=".35" />
+            <rect x="28" y={y} width="150" height="15" rx="4" fill="url(#wood)" stroke="#fff1cf" strokeWidth="1.3" />
+            {[0, 1, 2, 3, 4, 5, 6].map((k) => <path key={k} d={`M${44 + k * 19},${y} l3.2,7.5 l3.2,-7.5z`} fill="#4a2d10" />)}
+            <rect x="28" y={y} width="150" height="15" rx="4" fill="url(#hot)" className="stick-burn" style={{ animationDelay: `${i * 1.6}s` }} />
+          </g>
+        );
+      })}
+      <g aria-hidden>
+        <rect x="26" y="172" width="148" height="15" rx="7.5" fill="#1a0a06" opacity=".85" />
+        <text x="100" y="182.6" textAnchor="middle" fontSize="8.5" letterSpacing=".4" fill="#ffe2b8" fontFamily="system-ui" fontWeight="700">TALLY STICKS · EACH NOTCH = A DEBT</text>
+      </g>
       {/* coal bed */}
       <rect x="86" y={base - 2} width="348" height="24" rx="10" fill="url(#coal)" />
       <g className="flick2">{Array.from({ length: 16 }, (_, i) => <ellipse key={i} cx={104 + i * 21 + (i % 2) * 5} cy={base + 6 + (i % 3) * 4} rx={7 + (i % 3) * 2} ry="2.6" fill={i % 2 ? '#ffb347' : '#ff7a18'} opacity={0.55 + (i % 3) * 0.15} style={{ animationDelay: `${(i * 0.21) % 1.2}s` }} />)}</g>
@@ -196,14 +211,25 @@ export function Story({ go }: { go: (r: string) => void }) {
     return STORY_LANGS.some((p) => p.code === settings.lang) ? settings.lang : 'en';
   });
   const [voicesReady, setVoicesReady] = useState(0);
+  const [textDone, setTextDone] = useState(false);
+  const [verdictDone, setVerdictDone] = useState(false);
+  const [voiceURI, setVoiceURIState] = useState<string>('');
   const setLang = (c: string) => { setLangState(c); try { localStorage.setItem('sf.storylang', c); } catch { /* ignore */ } };
   const [burn, setBurn] = useState(false);
   const token = useRef(0);
   const pack = storyPack(lang);
   const sc = { ...SCENES[i], title: pack.title[i], short: pack.short[i], text: pack.text[i] };
   const verdictText = verdict ? formatVerdict(pack, verdict.kind, verdict) : '';
-  const voiceOk = !speechSupported() || voicesReady === 0 || hasVoiceFor(pack.speech);
+  const vStatus = voicesReady > 0 ? voiceStatus(pack.speech, voiceURI || undefined) : { kind: 'none' as const };
+  const voiceOk = !speechSupported() || voicesReady === 0 || vStatus.kind !== 'none';
+  const voiceList = voicesReady > 0 ? voicesFor(vStatus.kind === 'fallback' && vStatus.via ? vStatus.via : pack.speech) : [];
+  const speaking = voice && voiceOk && voicesReady > 0;
   const last = i === SCENES.length - 1;
+
+  useEffect(() => {
+    try { setVoiceURIState(localStorage.getItem(`sf.voice.${pack.speech}`) ?? ''); } catch { setVoiceURIState(''); }
+  }, [pack.speech]);
+  const setVoiceURI = (u: string) => { setVoiceURIState(u); try { localStorage.setItem(`sf.voice.${pack.speech}`, u); } catch { /* ignore */ } };
 
   // voices arrive asynchronously in most browsers
   useEffect(() => {
@@ -249,27 +275,35 @@ export function Story({ go }: { go: (r: string) => void }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [i]);
 
-  // narration in the chosen language
+  // narration in the chosen language: title, then the story, sentence by sentence
   useEffect(() => {
     stopSpeaking();
-    if (voice) speak(`${sc.title}. ${sc.text}`, lang, settings.speakRate, { tag: pack.speech });
+    setTextDone(false);
+    setVerdictDone(false);
+    if (voice) speak(`${sc.title}.\n${sc.text}`, lang, settings.speakRate, { tag: pack.speech, voiceURI: voiceURI || undefined, onEnd: () => setTextDone(true) });
     return () => stopSpeaking();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [i, voice, lang]);
+  }, [i, voice, lang, voiceURI]);
   // the scanner's verdict is read out after the chapter text
   useEffect(() => {
-    if (voice && verdictText) speak(verdictText, lang, settings.speakRate, { tag: pack.speech, queue: true });
+    if (voice && verdictText) speak(verdictText, lang, settings.speakRate, { tag: pack.speech, voiceURI: voiceURI || undefined, queue: true, onEnd: () => setVerdictDone(true) });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [verdict, voice, lang]);
+  }, [verdict, voice, lang, voiceURI]);
 
   // autoplay
   useEffect(() => {
     if (!play) return;
     if (last) { setPlay(false); return; }
     if (sc.art === 'scan' && !run) return;
+    if (speaking) {
+      // move on only when the narrator has finished (plus a breath), never mid-sentence; 90 s safety net
+      const ready = textDone && (sc.art !== 'scan' || verdictDone);
+      const t = setTimeout(() => setI((x) => x + 1), ready ? 1400 : 90000);
+      return () => clearTimeout(t);
+    }
     const t = setTimeout(() => setI((x) => x + 1), sc.art === 'scan' ? 10000 : 8000);
     return () => clearTimeout(t);
-  }, [play, i, run, sc.art, last]);
+  }, [play, i, run, sc.art, last, speaking, textDone, verdictDone]);
 
   // keyboard: arrows to move, space to play/pause
   useEffect(() => {
@@ -322,15 +356,24 @@ export function Story({ go }: { go: (r: string) => void }) {
               <input type="checkbox" checked={voice} onChange={(e) => setVoice(e.target.checked)} /><i aria-hidden /><span>🔊 Narrate</span>
             </label>
           )}
+          {voice && voiceList.length > 0 && (
+            <label className="lang-chip" title="Choose the narrator's voice">
+              <span aria-hidden>🎙</span>
+              <select value={vStatus.voice?.voiceURI ?? ''} onChange={(e) => setVoiceURI(e.target.value)} aria-label="Narrator voice">
+                {voiceList.map((v) => <option key={v.voiceURI} value={v.voiceURI}>{v.name.replace(/\s*\(.*\)\s*$/, '')}</option>)}
+              </select>
+            </label>
+          )}
           <label className="lang-chip story-lang">
             <span aria-hidden>🌐</span>
             <select value={lang} onChange={(e) => setLang(e.target.value)} aria-label="Story language">
-              {STORY_LANGS.map((p) => <option key={p.code} value={p.code}>{p.name}{voicesReady > 0 && speechSupported() && !hasVoiceFor(p.speech) ? ' · text only' : ''}</option>)}
+              {STORY_LANGS.map((p) => <option key={p.code} value={p.code}>{p.name}{voicesReady > 0 && speechSupported() && !hasVoiceFor(p.speech) ? ' · text only' : voicesReady > 0 && speechSupported() && voiceStatus(p.speech).kind === 'fallback' ? ' · Hindi voice' : ''}</option>)}
             </select>
           </label>
         </div>
       </div>
-      {voice && !voiceOk && <p className="small sans" style={{ color: '#ffb37a', margin: '8px 0 0' }}>This device has no {pack.name} voice installed, so the story is shown but not spoken. Pick another language, or add a {pack.name} voice in your system’s speech settings.</p>}
+      {voice && !voiceOk && <p className="small sans" style={{ color: '#ffb37a', margin: '8px 0 0' }}>This device has no {pack.name} voice installed, so the story is shown but not spoken. Pick another language, or add a {pack.name} voice in your system’s speech settings (on a phone: Settings → Accessibility → Spoken content / Text-to-speech). Chrome and Edge usually offer more voices than Firefox.</p>}
+      {voice && vStatus.kind === 'fallback' && <p className="small sans" style={{ color: '#d9c4a0', margin: '8px 0 0' }}>No {pack.name} voice is installed, so a Hindi voice reads it (same script). Install a {pack.name} voice for the best result.</p>}
       {lang !== 'en' && <p className="small sans" style={{ color: '#d9c4a0', margin: '6px 0 0' }}>Translations were drafted with AI and should be checked by a native speaker.</p>}
       <nav className="story-dots" aria-label="Chapters">
         {SCENES.map((_s, k) => (
