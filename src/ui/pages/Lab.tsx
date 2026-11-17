@@ -2,6 +2,7 @@ import { useState } from 'react';
 import fc from 'fast-check';
 import { daysInMonth, newCardSpec } from '../../core/card';
 import { randomId } from '../../core/prng';
+import { newPairing } from '../../core/pairing';
 import { CLEAN, placeHalf, renderScene, type PhotoConditions } from '../../render/scene';
 import { scanPhoto } from '../../vision/detect';
 import { Results, type Captured } from '../components/Results';
@@ -51,7 +52,7 @@ export function Lab() {
   const [stress, setStress] = useState<{ n: number; done: number; exact: number; flagged: number; wrong: number; ms: number } | null>(null);
   const [stopFlag, setStopFlag] = useState({ stop: false });
 
-  const spec = newCardSpec({ id: 'LAB' + randomId(5), year: 2026, month: 11, rateMinor: 50000, advMinor: 10000, worker: 'Lab Worker', employer: 'Lab Employer', carryMinor: Math.round(carry * 100) });
+  const spec = newCardSpec({ id: 'LAB' + randomId(5), year: 2026, month: 11, rateMinor: 50000, advMinor: 10000, worker: 'Lab Worker', employer: 'Lab Employer', carryMinor: Math.round(carry * 100), pairing: newPairing() });
 
   const go = async () => {
     setBusy(true);

@@ -51,6 +51,13 @@ Everything so far is verified on simulated photos and a rasterised print. This c
 - [ ] Mark a scanned pair **paid**, then scan the same cards again: the app must say "already paid".
 - [ ] Give a worker more advances than earnings: confirm the next month's card is offered with the balance, and that it prints on the card and appears on the next scan.
 
+## 9. Pairing and editing
+- [ ] Print a card with the **Pairing code** ticked (the default). Cut it badly on purpose (a wobbly, uneven line). Scan both halves: it should still say "Genuine pair", with the pairing check ticked and the cut shown as extra evidence.
+- [ ] Copy only the stock's printed details onto a new card (a fresh card with the same names and month but its own pairing), and try to pair it with the real stock: it must be rejected.
+- [ ] Edit a saved card (new wage), reprint both halves, and confirm the old paper can no longer be paired with the new one.
+- [ ] Apply a wage change at payday and check the slip and the ledger show it.
+- [ ] Type a wage above 2,000: it must snap back with a message.
+
 ## What to do with failures
 - Scan fails on a real photo: save the photo, add it as a fixture, and tune thresholds in `src/vision/detect.ts` (punch ratio, window sizes). Re-run `SF_RUNS=100 npm test`.
 - Hole position error larger than the circle: enlarge `HOLE_R` or the cell size in `src/core/layout.ts` (layout is shared by print and scan, so both update together).

@@ -6,8 +6,9 @@
  */
 import { cardCode, waveSeed, type CardSpec } from '../core/card';
 import { makeWave } from '../core/wave';
-import { compareHalves, computePay, type Comparison, type PayResult, type Verdict } from '../core/wages';
+import { compareHalves, computePay, type Comparison, type PayResult, type RateChange, type Verdict } from '../core/wages';
 import { advCells, dayCells } from '../core/layout';
+import { verifyPairTokens } from '../core/pairing';
 import type { CellReading, HalfScan } from './detect';
 
 export interface EdgeMatch {
@@ -32,6 +33,8 @@ export interface PairResult {
   cmp: Comparison;
   pay: PayResult;
   verdict: Verdict;
+  /** how the two halves were matched: the QR secrets, or (older cards) only the cut */
+  pairing: 'verified' | 'failed' | 'legacy';
   alignment: Alignment;
   uncertainCells: { kind: 'day' | 'adv'; n: number; half: 'S' | 'F' }[];
 }
@@ -172,6 +175,8 @@ function marks(r: CellReading[], n: number): boolean[] {
 export interface VerifyOptions {
   /** override the punched-together tolerance (mm), e.g. from calibration */
   alignTolMm?: number;
+  /** a wage change both sides agreed at payday (overrides the printed rate from fromDay) */
+  rateChange?: RateChange;
 }
 
 export function verifyPair(stock: HalfScan, foil: HalfScan, opts: VerifyOptions = {}): PairResult {
@@ -184,11 +189,27 @@ export function verifyPair(stock: HalfScan, foil: HalfScan, opts: VerifyOptions 
   checks.push({ label: 'Same card id', ok: sameId, detail: sameId ? ss.id : `${ss.id} ≠ ${fs.id}` });
   const codesOk = stock.payload.codeOk && foil.payload.codeOk && cardCode(ss) === cardCode(fs);
   checks.push({ label: 'Card code matches (rate, month, names unchanged)', ok: codesOk, detail: `${cardCode(ss)} / ${cardCode(fs)}` });
-  const edge = matchEdges(stock.edgeXs, stock.edge, foil.edge, waveSeed(ss));
+  // ---- QR pairing: cryptographic, does not depend on how well the halves were cut
+  const expected = stock.payload.pairing || foil.payload.pairing;
+  const pairing: PairResult['pairing'] = !expected ? 'legacy'
+    : stock.payload.pairing !== foil.payload.pairing ? 'failed'
+    : !stock.pair || !foil.pair ? 'failed'
+    : sameId && verifyPairTokens(stock.pair, foil.pair) ? 'verified' : 'failed';
   checks.push({
-    label: 'Wavy cut lines fit together',
-    ok: edge.verdict === 'match' ? true : edge.verdict === 'mismatch' ? false : null,
-    detail: edge.verdict === 'inconclusive' ? 'Could not see enough of the cut edges' : `fit ${edge.score}/100 · shape r=${edge.corr.toFixed(2)} · gap spread ${edge.rms.toFixed(2)} mm`,
+    label: 'Pairing code: the two halves were issued together',
+    ok: pairing === 'verified' ? true : pairing === 'failed' ? false : null,
+    detail: pairing === 'verified' ? 'The pairing secrets in the two QR codes fit; neither half can be invented from the other'
+      : pairing === 'failed' ? 'The pairing secrets do not fit: these halves were not issued as a pair, or one was made up'
+      : 'Older card with no pairing code: the cut edge is the only physical check',
+  });
+
+  const edge = matchEdges(stock.edgeXs, stock.edge, foil.edge, waveSeed(ss));
+  // With a verified pairing the cut is extra evidence, never a reason to reject a genuine pair.
+  const cutDecides = pairing !== 'verified';
+  checks.push({
+    label: cutDecides ? 'Wavy cut lines fit together' : 'Wavy cut lines fit together (extra evidence)',
+    ok: edge.verdict === 'match' ? true : edge.verdict === 'mismatch' ? (cutDecides ? false : null) : null,
+    detail: (edge.verdict === 'inconclusive' ? 'Could not see enough of the cut edges' : `fit ${edge.score}/100 · shape r=${edge.corr.toFixed(2)} · gap spread ${edge.rms.toFixed(2)} mm`) + (!cutDecides && edge.verdict !== 'match' ? '. Not needed: the pairing code already proves the pair' : ''),
   });
 
   const nDays = Math.max(ss.year ? stock.days.length : 0, foil.days.length);
@@ -209,15 +230,15 @@ export function verifyPair(stock: HalfScan, foil: HalfScan, opts: VerifyOptions 
         : `Look separately made: ${alignment.flagged.map((f) => (f.kind === 'day' ? `day ${f.n}` : `advance ${f.n}`) + ` (${f.residualMm.toFixed(1)} mm off)`).join(', ')}`,
   });
 
-  const pay = computePay(cmp, ss.rateMinor, ss.advMinor, ss.carryMinor);
-  const pairOk = stock.payload.role === 'S' && foil.payload.role === 'F' && sameId && codesOk && edge.verdict !== 'mismatch';
+  const pay = computePay(cmp, ss.rateMinor, ss.advMinor, ss.carryMinor, opts.rateChange);
+  const pairOk = stock.payload.role === 'S' && foil.payload.role === 'F' && sameId && codesOk && pairing !== 'failed' && (pairing === 'verified' || edge.verdict !== 'mismatch');
   // A pose built from fewer than 3 corner squares cannot be trusted to place the punch targets.
   const poseOk = Math.min(stock.fiducialsFound, foil.fiducialsFound) >= 3;
   checks.push({ label: 'Photos are sharp and complete enough to read', ok: poseOk, detail: poseOk ? `Corner squares: worker ${stock.fiducialsFound}/4, employer ${foil.fiducialsFound}/4` : `Only ${stock.fiducialsFound}/4 and ${foil.fiducialsFound}/4 corner squares found. Retake with the whole half in view.` });
-  const verdict: Verdict = !poseOk && pairOk ? 'unreliable' : !pairOk ? 'pair-mismatch' : !cmp.consistent ? 'genuine-disputed' : alignment.flagged.length ? 'review' : edge.verdict === 'inconclusive' ? 'inconclusive' : 'genuine-consistent';
+  const verdict: Verdict = !poseOk && pairOk ? 'unreliable' : !pairOk ? 'pair-mismatch' : !cmp.consistent ? 'genuine-disputed' : alignment.flagged.length ? 'review' : edge.verdict === 'inconclusive' && cutDecides ? 'inconclusive' : 'genuine-consistent';
   const uncertainCells = [
     ...[...stock.days, ...stock.adv].filter((c) => c.uncertain && !c.manual).map((c) => ({ kind: c.kind, n: c.n, half: 'S' as const })),
     ...[...foil.days, ...foil.adv].filter((c) => c.uncertain && !c.manual).map((c) => ({ kind: c.kind, n: c.n, half: 'F' as const })),
   ];
-  return { spec: ss, code: cardCode(ss), checks, edge, cmp, pay, verdict, alignment, uncertainCells };
+  return { spec: ss, code: cardCode(ss), checks, edge, cmp, pay, verdict, pairing, alignment, uncertainCells };
 }

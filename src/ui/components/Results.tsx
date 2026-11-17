@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { explainPay } from '../../ai';
-import { daysInMonth, firstWeekday, formatMoney } from '../../core/card';
+import { daysInMonth, firstWeekday, formatMoney, MAX_AMOUNT_MAJOR } from '../../core/card';
+import { AmountInput } from './AmountInput';
+import { confetti, useCountUp } from '../fx';
 import { weekdayShort, monthName, t } from '../../i18n';
 import { addCrew, addReceipt, loadReceipts } from '../../store';
 import { paymentStatus, payable } from '../../core/settlement';
@@ -38,12 +40,17 @@ export function Results({ stock, foil, onReset }: { stock: Captured; foil: Captu
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(false);
   const [paidTick, setPaidTick] = useState(0);
+  // a wage change both sides agree at payday (the printed rate cannot change on paper)
+  const [wc, setWc] = useState({ on: false, rate: stock.half.payload.spec.rateMinor / 100, from: 15 });
   const cs = useRef<HTMLCanvasElement>(null);
   const cf = useRef<HTMLCanvasElement>(null);
 
   const sH = useMemo(() => applyEdits(stock.half, edits), [stock, edits]);
   const fH = useMemo(() => applyEdits(foil.half, edits), [foil, edits]);
-  const r = useMemo(() => verifyPair(sH, fH, { alignTolMm: settings.calibration.alignTolMm }), [sH, fH, settings.calibration.alignTolMm]);
+  const rateChange = wc.on ? { fromDay: Math.max(1, Math.round(wc.from) || 1), rateMinor: Math.min(MAX_AMOUNT_MAJOR, Math.max(0, wc.rate)) * 100 } : undefined;
+  const rcKey = rateChange ? `${rateChange.fromDay}:${rateChange.rateMinor}` : '';
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const r = useMemo(() => verifyPair(sH, fH, { alignTolMm: settings.calibration.alignTolMm, rateChange }), [sH, fH, settings.calibration.alignTolMm, rcKey]);
   const { spec } = r;
 
   useEffect(() => {
@@ -52,6 +59,14 @@ export function Results({ stock, foil, onReset }: { stock: Captured; foil: Captu
   }, [stock, foil, sH, fH, r]);
 
   const unreliable = r.verdict === 'unreliable';
+  const celebrated = useRef('');
+  useEffect(() => {
+    // celebrate a clean, genuine result once per card (never on a dispute, a mismatch or an unreliable scan)
+    if (r.verdict === 'genuine-consistent' && celebrated.current !== spec.id) {
+      celebrated.current = spec.id;
+      confetti({ y: 0.22 });
+    }
+  }, [r.verdict, spec.id]);
   const cls = r.verdict === 'genuine-consistent' ? 'ok' : r.verdict === 'pair-mismatch' || unreliable ? 'bad' : 'warn';
   const icon = cls === 'ok' ? '✅' : cls === 'bad' ? '⛔' : '⚠️';
   const title = r.verdict === 'genuine-consistent' ? t(lang, 'vGenuine') : r.verdict === 'genuine-disputed' ? t(lang, 'vDisputed') : r.verdict === 'inconclusive' ? t(lang, 'vInconclusive') : r.verdict === 'review' ? t(lang, 'vReview') : unreliable ? t(lang, 'vUnreliable') : t(lang, 'vMismatch');
@@ -63,10 +78,11 @@ export function Results({ stock, foil, onReset }: { stock: Captured; foil: Captu
   const carry = r.pay.agreed.carryMinor;
   const nextMonth = spec.month === 12 ? { year: spec.year + 1, month: 1 } : { year: spec.year, month: spec.month + 1 };
   const markPaid = async () => {
-    await addReceipt({ cardId: spec.id, month: monthKey, worker: spec.worker, employer: spec.employer, verdict: 'paid', agreedDays: [], stockOnlyDays: [], foilOnlyDays: [], agreedAdv: 0, netMinor: payable(net), disputedMinor: r.pay.disputedMinor, currency: spec.currency });
+    await addReceipt({ cardId: spec.id, month: monthKey, worker: spec.worker, employer: spec.employer, verdict: 'paid', agreedDays: [], stockOnlyDays: [], foilOnlyDays: [], agreedAdv: 0, netMinor: payable(net), disputedMinor: r.pay.disputedMinor, currency: spec.currency, ...(rateChange ? { rateChange } : {}) });
     setPaidTick((n) => n + 1);
     toast(`Recorded: ${formatMoney(payable(net), spec.currency, lang)} paid`);
   };
+  const totalShown = useCountUp(r.pay.agreed.netMinor);
   const nDays = daysInMonth(spec.year, spec.month);
   const off = firstWeekday(spec.year, spec.month);
   const sus = new Set(r.alignment.flagged.filter((f) => f.kind === 'day').map((f) => f.n));
@@ -99,6 +115,7 @@ export function Results({ stock, foil, onReset }: { stock: Captured; foil: Captu
       netMinor: r.pay.agreed.netMinor,
       disputedMinor: r.pay.disputedMinor,
       currency: spec.currency,
+      ...(rateChange ? { rateChange } : {}),
     });
     setSaved(true);
     toast('Saved to the tamper-evident ledger');
@@ -159,7 +176,7 @@ export function Results({ stock, foil, onReset }: { stock: Captured; foil: Captu
               const d = i + 1;
               const st = r.cmp.dayStatus[i] ?? 'none';
               return (
-                <button key={d} className={`${st} ${uncertain.has(d) ? 'unsure' : ''} ${sus.has(d) ? 'sus' : ''} ${sel === d ? 'sel' : ''}`} onClick={() => setSel(sel === d ? null : d)} title={st}>
+                <button key={d} style={{ ['--i' as string]: d }} className={`${st} ${uncertain.has(d) ? 'unsure' : ''} ${sus.has(d) ? 'sus' : ''} ${sel === d ? 'sel' : ''}`} onClick={() => setSel(sel === d ? null : d)} title={st}>
                   {d}
                   <small>{sus.has(d) ? '⚠' : st === 'both' ? '●●' : st === 'stockOnly' ? '●○' : st === 'foilOnly' ? '○●' : ''}</small>
                 </button>
@@ -185,15 +202,46 @@ export function Results({ stock, foil, onReset }: { stock: Captured; foil: Captu
       <div className="card" style={{ marginTop: 16 }}>
         <h3>Pay</h3>
         {unreliable && <p className="small sans" style={{ color: 'var(--bad)' }}>⛔ Do not pay from this scan. The photos were not read reliably, so the numbers below may be wrong. Retake both photos with the whole half in view.</p>}
+        <details className="no-print" style={{ margin: '4px 0 12px' }} open={wc.on}>
+          <summary style={{ cursor: 'pointer' }}>💼 Wage changed this month? {wc.on && <span className="pill warn">override on</span>}</summary>
+          <div className="card flat sans" style={{ marginTop: 8 }}>
+            <label className="row" style={{ gap: 8, fontSize: '0.92rem', color: 'var(--ink)', margin: 0 }}>
+              <input type="checkbox" checked={wc.on} onChange={(e) => setWc({ ...wc, on: e.target.checked })} /> Apply a new daily wage from a given day
+            </label>
+            {wc.on && (
+              <>
+                <div className="row" style={{ alignItems: 'flex-start', marginTop: 8 }}>
+                  <AmountInput label="New daily wage" value={wc.rate} onChange={(v) => setWc({ ...wc, rate: v })} max={MAX_AMOUNT_MAJOR} />
+                  <div className="field" style={{ flex: 1 }}>
+                    <label>Applies from day</label>
+                    <input type="number" min={1} max={nDays} value={wc.from} onChange={(e) => setWc({ ...wc, from: Math.min(nDays, Math.max(1, Number(e.target.value) || 1)) })} />
+                    <div className="small muted">Days before it are paid at the printed {m(spec.rateMinor)}.</div>
+                  </div>
+                </div>
+                <div className="small" style={{ color: 'var(--amber)' }}>⚠ Both sides must agree. The printed card says {m(spec.rateMinor)} a day; this overrides it from day {wc.from}. It is shown on the slip and recorded in the ledger when you save or mark paid.</div>
+              </>
+            )}
+          </div>
+        </details>
         <div className="formula">
-          <span>{r.pay.agreed.days}</span>
-          <span className="op">days ×</span>
-          <span>{m(spec.rateMinor)}</span>
+          {r.pay.agreed.rateChange ? (
+            <>
+              <span>{r.pay.agreed.rateChange.daysBefore} × {m(spec.rateMinor)}</span>
+              <span className="op">+</span>
+              <span title={`wage from day ${r.pay.agreed.rateChange.fromDay}`}>{r.pay.agreed.rateChange.daysAfter} × {m(r.pay.agreed.rateChange.rateMinor)}</span>
+            </>
+          ) : (
+            <>
+              <span>{r.pay.agreed.days}</span>
+              <span className="op">days ×</span>
+              <span>{m(spec.rateMinor)}</span>
+            </>
+          )}
           <span className="op">−</span>
           <span>{r.pay.agreed.advances} × {m(spec.advMinor)}</span>
           {carry !== 0 && <><span className="op">{carry < 0 ? '−' : '+'}</span><span title="balance brought forward from last month">{m(Math.abs(carry))} b/f</span></>}
           <span className="op">=</span>
-          <span className="total">{m(r.pay.agreed.netMinor)}</span>
+          <span className="total">{m(Math.round(totalShown))}</span>
         </div>
         <table className="t" style={{ marginTop: 12 }}>
           <thead>

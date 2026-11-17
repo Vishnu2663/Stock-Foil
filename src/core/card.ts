@@ -1,4 +1,5 @@
 import { hash53, toBase32, randomId } from './prng';
+import { isPairChars, pairTag, type Pairing, type PairToken } from './pairing';
 
 /** Which half of the tally: the worker keeps the STOCK, the employer keeps the FOIL. */
 export type Role = 'S' | 'F';
@@ -27,9 +28,25 @@ export interface CardSpec {
    * Zero for ordinary cards, which keep the original SF1 format byte-for-byte.
    */
   carryMinor: number;
+  /**
+   * Secrets that cryptographically pair the two halves (see pairing.ts). Kept only by
+   * the issuer's app and never part of the card code; absent on cards printed before
+   * pairing codes existed.
+   */
+  pairing?: Pairing;
+  /** id of the card this one replaced when it was edited (local record only) */
+  revisedFrom?: string;
 }
 
 export const MAX_NAME = 18;
+
+/** Highest daily wage or advance-token value (in major units, e.g. rupees) a new card may carry. */
+export const MAX_AMOUNT_MAJOR = 2000;
+export const MAX_AMOUNT_MINOR = MAX_AMOUNT_MAJOR * 100;
+/** Sanity bound on a hand-typed balance brought forward. Balances computed from the ledger are never truncated. */
+export const MAX_CARRY_MAJOR = 100000;
+
+export const clampAmount = (n: number) => Math.min(MAX_AMOUNT_MINOR, Math.max(0, Number.isFinite(n) ? Math.round(n) : 0));
 
 export function cleanName(s: string): string {
   return s.replace(/[|\n\r]/g, ' ').trim().slice(0, MAX_NAME);
@@ -42,13 +59,15 @@ export function newCardSpec(input: Partial<Omit<CardSpec, 'v' | 'id'>> & { id?: 
     id: input.id ?? randomId(8),
     year: input.year ?? now.getFullYear(),
     month: input.month ?? now.getMonth() + 1,
-    rateMinor: Math.max(0, Math.round(input.rateMinor ?? 50000)),
-    advMinor: Math.max(0, Math.round(input.advMinor ?? 10000)),
+    rateMinor: clampAmount(input.rateMinor ?? 50000),
+    advMinor: clampAmount(input.advMinor ?? 10000),
     currency: (input.currency ?? 'INR').toUpperCase().slice(0, 3),
     worker: cleanName(input.worker ?? ''),
     employer: cleanName(input.employer ?? ''),
     lang: input.lang ?? 'en',
     carryMinor: Math.round(input.carryMinor ?? 0),
+    ...(input.pairing ? { pairing: input.pairing } : {}),
+    ...(input.revisedFrom ? { revisedFrom: input.revisedFrom } : {}),
   };
 }
 
@@ -74,31 +93,43 @@ export function waveSeed(spec: Pick<CardSpec, 'id'>): number {
 /**
  * QR payload. Ordinary cards use the original SF1 layout:
  *   SF1|role|id|yyyymm|rate|adv|cur|lang|code|worker|employer
- * Cards with a balance brought forward use SF2, which adds the carry field:
+ * A balance brought forward uses SF2 (adds carry before code):
  *   SF2|role|id|yyyymm|rate|adv|cur|lang|carry|code|worker|employer
- * Both decode, so cards that are already printed keep working.
+ * A trailing 'p' on the version (SF1p, SF2p) means the card is cryptographically paired:
+ * this half's own secret and the pair tag follow the code, before the names:
+ *   SF1p|role|id|yyyymm|rate|adv|cur|lang|code|secret|tag|worker|employer
+ * Every older form still decodes, so cards that are already printed keep working.
  */
 export function encodePayload(spec: CardSpec, role: Role): string {
   const ym = `${spec.year}${String(spec.month).padStart(2, '0')}`;
   const code = cardCode(spec).replace('-', '');
-  if (spec.carryMinor) return ['SF2', role, spec.id, ym, spec.rateMinor, spec.advMinor, spec.currency, spec.lang, spec.carryMinor, code, spec.worker, spec.employer].join('|');
-  return ['SF1', role, spec.id, ym, spec.rateMinor, spec.advMinor, spec.currency, spec.lang, code, spec.worker, spec.employer].join('|');
+  const pair = spec.pairing ? [role === 'S' ? spec.pairing.sa : spec.pairing.sf, pairTag(spec.id, spec.pairing.sa, spec.pairing.sf)] : [];
+  const flag = spec.pairing ? 'p' : '';
+  const head = ['SF' + (spec.carryMinor ? '2' : '1') + flag, role, spec.id, ym, spec.rateMinor, spec.advMinor, spec.currency, spec.lang];
+  return [...head, ...(spec.carryMinor ? [spec.carryMinor] : []), code, ...pair, spec.worker, spec.employer].join('|');
 }
 
 export interface DecodedPayload {
   spec: CardSpec;
   role: Role;
+  /** the card is cryptographically paired (its QR carries this half's secret and the tag) */
+  pairing: boolean;
+  /** this half's pairing token, when the card is paired */
+  pair?: PairToken;
   /** True if the embedded code matches the recomputed one (fields not altered). */
   codeOk: boolean;
 }
 
 export function decodePayload(text: string): DecodedPayload | null {
   const p = text.split('|');
-  const ver = p[0];
-  if (ver !== 'SF1' && ver !== 'SF2') return null;
-  const carryAt = ver === 'SF2' ? 8 : -1;
-  const codeAt = ver === 'SF2' ? 9 : 8;
-  const nameAt = codeAt + 1;
+  const m = /^SF([12])(p?)$/.exec(p[0]);
+  if (!m) return null;
+  const hasCarry = m[1] === '2';
+  const paired = m[2] === 'p';
+  const carryAt = hasCarry ? 8 : -1;
+  const codeAt = hasCarry ? 9 : 8;
+  const secretAt = paired ? codeAt + 1 : -1;
+  const nameAt = codeAt + 1 + (paired ? 2 : 0);
   if (p.length < nameAt + 2) return null;
   const role = p[1];
   if (role !== 'S' && role !== 'F') return null;
@@ -110,6 +141,11 @@ export function decodePayload(text: string): DecodedPayload | null {
   const advMinor = Number(p[5]);
   const carryMinor = carryAt >= 0 ? Number(p[carryAt]) : 0;
   if (!Number.isFinite(rateMinor) || !Number.isFinite(advMinor) || !Number.isFinite(carryMinor)) return null;
+  let pair: PairToken | undefined;
+  if (paired) {
+    if (!isPairChars(p[secretAt]) || !isPairChars(p[secretAt + 1])) return null;
+    pair = { role, id: p[2], secret: p[secretAt], tag: p[secretAt + 1] };
+  }
   const spec: CardSpec = {
     v: 1,
     id: p[2],
@@ -124,7 +160,7 @@ export function decodePayload(text: string): DecodedPayload | null {
     employer: p.slice(nameAt + 1).join('|'),
   };
   const codeOk = cardCode(spec).replace('-', '') === p[codeAt];
-  return { spec, role, codeOk };
+  return { spec, role, codeOk, pairing: paired, ...(pair ? { pair } : {}) };
 }
 
 export function daysInMonth(year: number, month: number): number {

@@ -1,10 +1,13 @@
 import { Fragment, useMemo, useState } from 'react';
-import { formatMoney, type CardSpec } from '../../core/card';
+import { formatMoney, MAX_AMOUNT_MAJOR, type CardSpec } from '../../core/card';
+import { AmountInput } from '../components/AmountInput';
+import { useCountUp } from '../fx';
 import { bulkSpecs, cardsOf, carryFor, hasCardForMonth, memberStats, newMember } from '../../core/members';
 import { LANGS, monthName } from '../../i18n';
 import { sheetPdf, sheetsPdf } from '../../render/pdf';
 import { sheetSvg } from '../../render/sheet';
-import { addMember, loadCards, loadMembers, loadReceipts, removeMember, saveCards } from '../../store';
+import { addMember, loadCards, loadMembers, loadReceipts, removeMember, saveCards, updateMember } from '../../store';
+import { newPairing } from '../../core/pairing';
 import { useApp } from '../ctx';
 
 const CURRENCIES = ['INR', 'USD', 'EUR', 'GBP', 'KES', 'NGN', 'BDT', 'PKR', 'NPR', 'PHP', 'IDR', 'MXN', 'BRL', 'ZAR'];
@@ -24,12 +27,17 @@ export function Members({ newCardFor }: { go: (r: string) => void; newCardFor: (
   const [cards, setCards] = useState(loadCards());
   const [open, setOpen] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [editId, setEditId] = useState<string | null>(null);
+  const [ef, setEf] = useState({ name: '', employer: '', rate: 500, adv: 100, currency: 'INR', lang: 'en' });
   const [ym, setYm] = useState(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`);
   const [f, setF] = useState({ name: '', employer: '', rate: 500, adv: 100, currency: 'INR', lang: settings.lang });
   const [year, month] = ym.split('-').map(Number);
 
   const refresh = () => { setMembers(loadMembers()); setCards(loadCards()); };
   const stats = useMemo(() => memberStats(members, cards, year, month), [members, cards, year, month]);
+  const nMembers = Math.round(useCountUp(stats.members));
+  const nCards = Math.round(useCountUp(stats.cards));
+  const nMonth = Math.round(useCountUp(stats.thisMonth));
   const missing = useMemo(() => members.filter((m) => !hasCardForMonth(m, cards, year, month)), [members, cards, year, month]);
 
   const add = () => {
@@ -41,7 +49,8 @@ export function Members({ newCardFor }: { go: (r: string) => void; newCardFor: (
 
   const bulk = async () => {
     const receipts = loadReceipts();
-    const specs = bulkSpecs(members, cards, year, month, (m) => carryFor(m, cards, receipts, year, month));
+    // every card made in bulk is cryptographically paired, like cards from the New card form
+    const specs = bulkSpecs(members, cards, year, month, (m) => carryFor(m, cards, receipts, year, month)).map((c) => ({ ...c, pairing: newPairing() }));
     if (!specs.length) return toast('Everyone already has a card for this month');
     setBusy(true);
     saveCards(specs);
@@ -55,15 +64,29 @@ export function Members({ newCardFor }: { go: (r: string) => void; newCardFor: (
     refresh();
   };
 
+  const startEdit = (m: (typeof members)[number]) => {
+    setEditId(m.id);
+    setEf({ name: m.name, employer: m.employer, rate: m.rateMinor / 100, adv: m.advMinor / 100, currency: m.currency, lang: m.lang });
+  };
+  const saveEdit = () => {
+    const m = members.find((x) => x.id === editId);
+    if (!m || !ef.name.trim()) return toast('Enter the member’s name');
+    updateMember(m.id, { name: ef.name.trim().slice(0, 18), employer: ef.employer.trim().slice(0, 18), rateMinor: Math.round(ef.rate * 100), advMinor: Math.round(ef.adv * 100), currency: ef.currency, lang: ef.lang });
+    const renamed = m.name.trim().toLowerCase() !== ef.name.trim().toLowerCase() || m.employer.trim().toLowerCase() !== ef.employer.trim().toLowerCase();
+    toast(renamed ? 'Saved. Cards already printed keep the old name, so they stop counting for this member.' : 'Saved. The new wage applies to cards made from now on.');
+    setEditId(null);
+    refresh();
+  };
+
   return (
     <div>
       <h1 style={{ fontSize: '2rem' }}>Members</h1>
       <p className="muted">The people you create cards for. Add each worker once, then make their card each month in one click, or make everyone’s at once.</p>
 
       <div className="grid3" style={{ marginBottom: 16 }}>
-        <div className="card"><div className="kicker">Members</div><div style={{ fontSize: '2.2rem', fontWeight: 800 }}>{stats.members}</div></div>
-        <div className="card"><div className="kicker">Cards created (all time)</div><div style={{ fontSize: '2.2rem', fontWeight: 800 }}>{stats.cards}</div></div>
-        <div className="card"><div className="kicker">{monthName(lang, month)} {year}</div><div style={{ fontSize: '2.2rem', fontWeight: 800 }}>{stats.thisMonth}<span className="muted" style={{ fontSize: '1rem' }}> / {stats.members} have a card</span></div></div>
+        <div className="card" data-tilt="7"><div className="kicker">Members</div><div style={{ fontSize: '2.2rem', fontWeight: 800 }}>{nMembers}</div></div>
+        <div className="card" data-tilt="7"><div className="kicker">Cards created (all time)</div><div style={{ fontSize: '2.2rem', fontWeight: 800 }}>{nCards}</div></div>
+        <div className="card" data-tilt="7"><div className="kicker">{monthName(lang, month)} {year}</div><div style={{ fontSize: '2.2rem', fontWeight: 800 }}>{nMonth}<span className="muted" style={{ fontSize: '1rem' }}> / {stats.members} have a card</span></div></div>
       </div>
 
       <div className="grid2">
@@ -72,8 +95,8 @@ export function Members({ newCardFor }: { go: (r: string) => void; newCardFor: (
           <div className="field"><label>Name</label><input value={f.name} maxLength={18} onChange={(e) => setF({ ...f, name: e.target.value })} placeholder="e.g. Ramesh" onKeyDown={(e) => e.key === 'Enter' && add()} /></div>
           <div className="field"><label>Employer / contractor</label><input value={f.employer} maxLength={18} onChange={(e) => setF({ ...f, employer: e.target.value })} placeholder="e.g. Sharma Builders" /></div>
           <div className="row">
-            <div className="field" style={{ flex: 1 }}><label>Daily wage</label><input type="number" min={0} step="any" value={f.rate} onChange={(e) => setF({ ...f, rate: Number(e.target.value) })} /></div>
-            <div className="field" style={{ flex: 1 }}><label>Advance token</label><input type="number" min={0} step="any" value={f.adv} onChange={(e) => setF({ ...f, adv: Number(e.target.value) })} /></div>
+            <AmountInput label="Daily wage" value={f.rate} onChange={(v) => setF({ ...f, rate: v })} max={MAX_AMOUNT_MAJOR} />
+            <AmountInput label="Advance token" value={f.adv} onChange={(v) => setF({ ...f, adv: v })} max={MAX_AMOUNT_MAJOR} />
           </div>
           <div className="row">
             <div className="field" style={{ flex: 1 }}><label>Currency</label><select value={f.currency} onChange={(e) => setF({ ...f, currency: e.target.value })}>{CURRENCIES.map((c) => <option key={c}>{c}</option>)}</select></div>
@@ -111,10 +134,25 @@ export function Members({ newCardFor }: { go: (r: string) => void; newCardFor: (
                       <td><button className="sm ghost" onClick={() => setOpen(open === m.id ? null : m.id)}>{mine.length} {open === m.id ? '▴' : '▾'}</button></td>
                       <td>{has ? <span className="pill ok">✓ has card</span> : <span className="pill warn">no card</span>}</td>
                       <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                        <button className="sm ghost" title="Edit this member (new wage applies to future cards)" onClick={() => (editId === m.id ? setEditId(null) : startEdit(m))}>✎</button>{' '}
                         <button className="sm" onClick={() => newCardFor({ worker: m.name, employer: m.employer, rateMinor: m.rateMinor, advMinor: m.advMinor, currency: m.currency, lang: m.lang, year, month, carryMinor: carryFor(m, cards, loadReceipts(), year, month) })}>＋ Card</button>{' '}
                         <button className="sm ghost" title="Remove member (their saved cards stay)" onClick={() => { if (confirm(`Remove ${m.name}? Their saved cards stay in the Ledger.`)) { removeMember(m.id); refresh(); } }}>✕</button>
                       </td>
                     </tr>
+                    {editId === m.id && (
+                      <tr>
+                        <td colSpan={6} style={{ textAlign: 'left', background: 'var(--paper-2)' }}>
+                          <div className="row sans" style={{ alignItems: 'flex-start', gap: 12 }}>
+                            <div className="field" style={{ flex: '1 1 150px' }}><label>Name</label><input value={ef.name} maxLength={18} onChange={(e) => setEf({ ...ef, name: e.target.value })} /></div>
+                            <div className="field" style={{ flex: '1 1 150px' }}><label>Employer</label><input value={ef.employer} maxLength={18} onChange={(e) => setEf({ ...ef, employer: e.target.value })} /></div>
+                            <div style={{ flex: '1 1 130px' }}><AmountInput label="Daily wage" value={ef.rate} onChange={(v) => setEf({ ...ef, rate: v })} max={MAX_AMOUNT_MAJOR} /></div>
+                            <div style={{ flex: '1 1 130px' }}><AmountInput label="Advance token" value={ef.adv} onChange={(v) => setEf({ ...ef, adv: v })} max={MAX_AMOUNT_MAJOR} /></div>
+                          </div>
+                          <div className="small muted sans" style={{ margin: '2px 0 8px' }}>Salary increased? Change the wage here: <b>cards made from now on</b> use it. A card already printed keeps its old wage (it is part of the card), so for this month either edit that card (✎ in its list) or apply the new wage at payday.</div>
+                          <div className="row"><button className="primary sm" onClick={saveEdit}>Save changes</button><button className="sm ghost" onClick={() => setEditId(null)}>Cancel</button></div>
+                        </td>
+                      </tr>
+                    )}
                     {open === m.id && (
                       <tr>
                         <td colSpan={6} style={{ textAlign: 'left', background: 'var(--paper-2)' }}>
@@ -123,7 +161,10 @@ export function Members({ newCardFor }: { go: (r: string) => void; newCardFor: (
                               {mine.map((c) => (
                                 <div key={c.id} className="row" style={{ justifyContent: 'space-between' }}>
                                   <span>{monthName(lang, c.month)} {c.year} · <span className="mono">{c.id}</span></span>
-                                  <button className="sm" onClick={async () => save(await sheetPdf(sheetSvg(c, c.lang)), `tally-${c.id}.pdf`)}>⬇ PDF</button>
+                                  <span className="row" style={{ gap: 6 }}>
+                                    <button className="sm" title="Change the wage, names or month. Makes a revised card that replaces this one." onClick={() => newCardFor({ worker: c.worker, employer: c.employer, year: c.year, month: c.month, rateMinor: c.rateMinor, advMinor: c.advMinor, currency: c.currency, lang: c.lang, carryMinor: c.carryMinor, revisedFrom: c.id })}>✎ Edit</button>
+                                    <button className="sm" onClick={async () => save(await sheetPdf(sheetSvg(c, c.lang)), `tally-${c.id}.pdf`)}>⬇ PDF</button>
+                                  </span>
                                 </div>
                               ))}
                             </div>

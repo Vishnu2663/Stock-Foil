@@ -44,7 +44,7 @@ function fakeResult(sd: number[], fd: number[]): PairResult {
   const spec = newCardSpec({ id: 'AI000001', year: 2026, month: 11, rateMinor: 50000, advMinor: 10000, worker: 'Secret Name', employer: 'Hidden Corp' });
   const mk = (d: number[]) => Array.from({ length: 30 }, (_, i) => d.includes(i + 1));
   const cmp = compareHalves({ days: mk(sd), adv: [] }, { days: mk(fd), adv: [] });
-  return { spec, code: 'AAA-BBB', checks: [], edge: {} as never, cmp, pay: computePay(cmp, spec.rateMinor, spec.advMinor), verdict: cmp.consistent ? 'genuine-consistent' : 'genuine-disputed', alignment: { checked: false, shared: 0, flagged: [], maxResidualMm: 0 }, uncertainCells: [] };
+  return { spec, code: 'AAA-BBB', checks: [], edge: {} as never, cmp, pay: computePay(cmp, spec.rateMinor, spec.advMinor), verdict: cmp.consistent ? 'genuine-consistent' : 'genuine-disputed', pairing: 'legacy', alignment: { checked: false, shared: 0, flagged: [], maxResidualMm: 0 }, uncertainCells: [] };
 }
 
 describe('AI layer', () => {

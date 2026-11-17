@@ -9,6 +9,7 @@
  */
 import jsQR from 'jsqr';
 import { decodePayload, type DecodedPayload } from '../core/card';
+import type { PairToken } from '../core/pairing';
 import { applyH, findAffine, findHomography, type H } from '../core/homography';
 import {
   advCells,
@@ -61,6 +62,10 @@ export interface CellReading {
 
 export interface HalfScan {
   payload: DecodedPayload;
+  /** the card is cryptographically paired */
+  pairExpected: boolean;
+  /** this half's pairing token (secret + tag), read from its QR */
+  pair?: PairToken;
   /** frame mm -> image px */
   H: H;
   qrImgCorners: Pt[];
@@ -632,6 +637,8 @@ export function readHalf(g: Gray, qrImg: Pt[], payload: DecodedPayload, o: Requi
 
   return {
     payload,
+    pairExpected: payload.pairing,
+    pair: payload.pair,
     H,
     qrImgCorners: qrImg,
     fiducialsFound: found.length,

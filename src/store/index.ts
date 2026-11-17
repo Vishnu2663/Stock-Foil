@@ -83,6 +83,8 @@ export interface Receipt {
   netMinor: number;
   disputedMinor: number;
   currency: string;
+  /** a wage change agreed at payday, if any (committed to by the hash) */
+  rateChange?: { fromDay: number; rateMinor: number };
   prev: string;
   hash: string;
 }
@@ -94,7 +96,7 @@ export async function sha256Hex(s: string): Promise<string> {
   return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
-const body = (r: Omit<Receipt, 'hash'>) => JSON.stringify([r.seq, r.at, r.cardId, r.month, r.worker, r.employer, r.verdict, r.agreedDays, r.stockOnlyDays, r.foilOnlyDays, r.agreedAdv, r.netMinor, r.disputedMinor, r.currency, r.prev]);
+const body = (r: Omit<Receipt, 'hash'>) => JSON.stringify([r.seq, r.at, r.cardId, r.month, r.worker, r.employer, r.verdict, r.agreedDays, r.stockOnlyDays, r.foilOnlyDays, r.agreedAdv, r.netMinor, r.disputedMinor, r.currency, r.prev, ...(r.rateChange ? [r.rateChange.fromDay, r.rateChange.rateMinor] : [])]);
 
 export async function addReceipt(r: Omit<Receipt, 'seq' | 'at' | 'prev' | 'hash'>): Promise<Receipt> {
   const all = loadReceipts();
@@ -159,6 +161,9 @@ export const loadMembers = (): Member[] => read<Member[]>(K_MEMBERS, []);
 export const saveMembers = (m: Member[]) => write(K_MEMBERS, m);
 export function addMember(m: Member) {
   saveMembers([...loadMembers(), m]);
+}
+export function updateMember(id: string, patch: Partial<Omit<Member, 'id' | 'createdAt'>>) {
+  saveMembers(loadMembers().map((m) => (m.id === id ? { ...m, ...patch } : m)));
 }
 export const removeMember = (id: string) => saveMembers(loadMembers().filter((m) => m.id !== id));
 export function saveCards(specs: CardSpec[]) {

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 
-export interface NavItem { route: string; label: string; hint?: string; icon?: string }
+export interface NavItem { route: string; label: string; hint?: string; icon?: string; accent?: boolean }
 interface Group { id: string; label: string; items: NavItem[] }
 
 /** Feather "settings" icon (MIT), drawn at a size that is easy to hit. */
@@ -92,7 +92,7 @@ export function TopNav({ route, primary, groups, settings }: { route: string; pr
         </button>
         <nav id="mainnav" aria-label="Main" className={panel ? 'open' : ''}>
           {primary.map((i) => (
-            <a key={i.route} href={`#/${i.route}`} className={route === i.route ? 'on' : ''} aria-current={route === i.route ? 'page' : undefined}>{i.label}</a>
+            <a key={i.route} href={`#/${i.route}`} className={`${route === i.route ? 'on' : ''} ${i.accent ? 'accent' : ''}`} aria-current={route === i.route ? 'page' : undefined}>{i.label}</a>
           ))}
           {groups.map((g) => {
             const active = g.items.some((i) => i.route === route);
@@ -104,8 +104,8 @@ export function TopNav({ route, primary, groups, settings }: { route: string; pr
                 </button>
                 <div className="dd-menu" role="menu" aria-label={g.label}>
                   <div className="dd-title">{g.label}</div>
-                  {g.items.map((i) => (
-                    <a key={i.route} role="menuitem" href={`#/${i.route}`} className={`dd-item ${route === i.route ? 'on' : ''}`} aria-current={route === i.route ? 'page' : undefined}>
+                  {g.items.map((i, n) => (
+                    <a key={i.route} role="menuitem" style={{ ['--n' as string]: n }} href={`#/${i.route}`} className={`dd-item ${route === i.route ? 'on' : ''}`} aria-current={route === i.route ? 'page' : undefined}>
                       <span className="dd-ico" aria-hidden>{i.icon}</span>
                       <span className="dd-txt"><b>{i.label}</b>{i.hint && <small>{i.hint}</small>}</span>
                     </a>

@@ -63,6 +63,12 @@ export function compareHalves(stock: HalfMarks, foil: HalfMarks): Comparison {
   return res;
 }
 
+/** A wage change agreed at payday: days numbered fromDay or later are paid at rateMinor. */
+export interface RateChange {
+  fromDay: number;
+  rateMinor: number;
+}
+
 export interface PayLine {
   days: number;
   rateMinor: number;
@@ -72,6 +78,8 @@ export interface PayLine {
   advancesMinor: number;
   /** balance brought forward (negative = worker owes), included in net */
   carryMinor: number;
+  /** set when a mid-month wage change was applied; days split at rateChange.fromDay */
+  rateChange?: RateChange & { daysBefore: number; daysAfter: number };
   /** May be negative: then the worker owes a balance carried forward. */
   netMinor: number;
 }
@@ -80,6 +88,19 @@ export function payLine(days: number, rateMinor: number, advances: number, advMi
   const grossMinor = days * rateMinor;
   const advancesMinor = advances * advMinor;
   return { days, rateMinor, grossMinor, advances, advMinor, advancesMinor, carryMinor, netMinor: grossMinor - advancesMinor + carryMinor };
+}
+
+/**
+ * Like payLine, but from the actual day numbers so a mid-month wage change can apply from a
+ * given day. With no change the result is identical to payLine (days x rate).
+ */
+export function payLineDays(dayNums: number[], rateMinor: number, advances: number, advMinor: number, carryMinor = 0, change?: RateChange): PayLine {
+  if (!change) return payLine(dayNums.length, rateMinor, advances, advMinor, carryMinor);
+  const daysAfter = dayNums.filter((d) => d >= change.fromDay).length;
+  const daysBefore = dayNums.length - daysAfter;
+  const grossMinor = daysBefore * rateMinor + daysAfter * change.rateMinor;
+  const advancesMinor = advances * advMinor;
+  return { days: dayNums.length, rateMinor, grossMinor, advances, advMinor, advancesMinor, carryMinor, netMinor: grossMinor - advancesMinor + carryMinor, rateChange: { ...change, daysBefore, daysAfter } };
 }
 
 export interface PayResult {
@@ -93,14 +114,14 @@ export interface PayResult {
   disputedMinor: number;
 }
 
-export function computePay(cmp: Comparison, rateMinor: number, advMinor: number, carryMinor = 0): PayResult {
-  const sDays = cmp.agreedDays.length + cmp.stockOnlyDays.length;
-  const fDays = cmp.agreedDays.length + cmp.foilOnlyDays.length;
+export function computePay(cmp: Comparison, rateMinor: number, advMinor: number, carryMinor = 0, change?: RateChange): PayResult {
+  const sDays = [...cmp.agreedDays, ...cmp.stockOnlyDays];
+  const fDays = [...cmp.agreedDays, ...cmp.foilOnlyDays];
   const sAdv = cmp.agreedAdv.length + cmp.stockOnlyAdv.length;
   const fAdv = cmp.agreedAdv.length + cmp.foilOnlyAdv.length;
-  const agreed = payLine(cmp.agreedDays.length, rateMinor, cmp.agreedAdv.length, advMinor, carryMinor);
-  const workerView = payLine(sDays, rateMinor, sAdv, advMinor, carryMinor);
-  const employerView = payLine(fDays, rateMinor, fAdv, advMinor, carryMinor);
+  const agreed = payLineDays(cmp.agreedDays, rateMinor, cmp.agreedAdv.length, advMinor, carryMinor, change);
+  const workerView = payLineDays(sDays, rateMinor, sAdv, advMinor, carryMinor, change);
+  const employerView = payLineDays(fDays, rateMinor, fAdv, advMinor, carryMinor, change);
   return { agreed, workerView, employerView, disputedMinor: Math.abs(workerView.netMinor - employerView.netMinor) };
 }
 

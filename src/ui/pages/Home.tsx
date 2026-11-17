@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import QRCode from 'qrcode';
 import { useApp } from '../ctx';
+import { TallyCard3D } from '../components/TallyCard3D';
 
 /** QR of the current address, so a phone can open the app by scanning the laptop screen. */
 function PhoneQR() {
@@ -40,36 +41,19 @@ export function Home({ go }: { go: (r: string) => void }) {
           </div>
           <p className="small muted sans" style={{ marginTop: 14 }}>Free · works offline · no account · no server · the worker never needs a phone.</p>
         </div>
-        <svg viewBox="0 0 420 300" role="img" aria-label="Two halves of a tally card with matching holes">
-          <defs>
-            <filter id="sh"><feDropShadow dx="0" dy="4" stdDeviation="5" floodOpacity="0.25" /></filter>
-          </defs>
-          <g filter="url(#sh)">
-            <path d="M20 20 H400 V140 Q370 160 340 140 T280 140 T220 150 T160 135 T100 150 T20 140Z" fill="#fffaf0" stroke="#cdbb8f" />
-            <path d="M20 160 Q50 140 100 170 T160 155 T220 170 T280 160 T340 160 T400 160 V285 H20Z" fill="#f4ead2" stroke="#cdbb8f" />
-          </g>
-          {[60, 120, 180, 240, 300, 360].map((x, i) => (
-            <g key={x}>
-              <circle cx={x} cy={62} r={9} fill="var(--paper)" stroke="#cdbb8f" opacity={i === 4 ? 0.2 : 1} />
-              <circle cx={x} cy={222} r={9} fill="var(--paper)" stroke="#cdbb8f" opacity={i === 4 ? 0.2 : 1} />
-            </g>
-          ))}
-          <text x="30" y="44" fontSize="13" fontWeight="700" fill="#231f1a" fontFamily="system-ui">STOCK · worker keeps</text>
-          <text x="30" y="270" fontSize="13" fontWeight="700" fill="#231f1a" fontFamily="system-ui">FOIL · employer keeps</text>
-          <text x="210" y="156" fontSize="12" fontWeight="700" textAnchor="middle" fill="#ffd9a8" fontFamily="system-ui" style={{ paintOrder: 'stroke' }} stroke="#14080a" strokeWidth="3">✂ the cut is the signature</text>
-        </svg>
+        <TallyCard3D mode="hero" />
       </section>
 
       <div className="tally-rule" />
       <div className="grid2">
-        <div className="card steps">
+        <div className="card steps" data-tilt="4">
           <h2>How it works</h2>
           <div className="step"><b>Print and cut</b>The app prints a calendar card with a unique wavy cut line. Cut along it with scissors.</div>
           <div className="step"><b>Punch both, daily</b>At the end of each workday, stack the halves and punch one hole through both. No phone, no reading needed.</div>
           <div className="step"><b>Scan on payday</b>Photograph both halves. The app checks the cut edges fit, compares every hole and flags any hole on only one half.</div>
           <div className="step"><b>Get a picture slip</b>days × rate − advances = total, in your language, with pictures and read-aloud.</div>
         </div>
-        <div className="card">
+        <div className="card" data-tilt="4">
           <h2>What is in the box</h2>
           <ul className="sans" style={{ paddingLeft: 18, margin: 0 }}>
             <li><b>Pair authentication</b>: card code binds names, month and rate; the physical cut edge must fit.</li>

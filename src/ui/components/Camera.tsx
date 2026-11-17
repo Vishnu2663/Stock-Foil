@@ -123,6 +123,8 @@ export function Camera({ have, onCapture, onClose }: { have: { S: boolean; F: bo
     <div>
       <div className="cam" style={{ outline: tone === 'ok' ? '4px solid var(--green)' : tone === 'warn' ? '4px solid var(--amber)' : 'none' }}>
         <video ref={vref} playsInline muted />
+        <div className={`viewfinder ${tone}`} aria-hidden><b /><b /><b /><b /><span className="beam" /></div>
+        {flash && <div className="shutter" aria-hidden />}
         <div className="hint">{flash || hint}</div>
       </div>
       <div className="row" style={{ marginTop: 10 }}>

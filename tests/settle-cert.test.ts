@@ -129,3 +129,31 @@ describe('income certificate', () => {
     expect(cert.months.some((m) => m.net === 777)).toBe(false);
   });
 });
+
+describe('ledger receipts that record a wage change', () => {
+  beforeEach(() => mem.clear());
+
+  it('the wage change is committed to by the hash: editing it breaks the chain; receipts without one still verify', async () => {
+    const { verifyChain } = await import('../src/store');
+    await scan('CARD0001', '2026-10', 20, 1000000); // an ordinary receipt, no change recorded
+    await addReceipt({ ...base, cardId: 'CARD0002', month: '2026-11', verdict: 'genuine-consistent', agreedDays: [1, 2, 3], agreedAdv: 0, netMinor: 180000, rateChange: { fromDay: 2, rateMinor: 70000 } });
+    await scan('CARD0003', '2026-12', 5, 250000);
+    const rs = loadReceipts();
+    expect(await verifyChain(rs)).toBe(-1);
+    expect(rs[1].rateChange).toEqual({ fromDay: 2, rateMinor: 70000 });
+    // quietly raising the recorded wage, moving the start day, or deleting the record are all detected
+    const bumped = rs.map((r) => ({ ...r })); bumped[1].rateChange = { fromDay: 2, rateMinor: 99000 };
+    expect(await verifyChain(bumped)).toBe(1);
+    const moved = rs.map((r) => ({ ...r })); moved[1].rateChange = { fromDay: 1, rateMinor: 70000 };
+    expect(await verifyChain(moved)).toBe(1);
+    const stripped = rs.map((r) => ({ ...r })); delete stripped[1].rateChange;
+    expect(await verifyChain(stripped)).toBe(1);
+  });
+
+  it('receipts written before wage changes existed (no rateChange field) verify exactly as they always did', async () => {
+    const { verifyChain } = await import('../src/store');
+    for (let i = 0; i < 4; i++) await scan('OLD' + i, `2026-0${i + 1}`, 10 + i, 100000 * (i + 1));
+    expect(loadReceipts().every((r) => r.rateChange === undefined)).toBe(true);
+    expect(await verifyChain(loadReceipts())).toBe(-1);
+  });
+});

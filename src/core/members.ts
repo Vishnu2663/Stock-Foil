@@ -3,7 +3,7 @@
  * worker name and employer match (case-insensitive), so no extra data has to be
  * printed on the card and the card code stays untouched.
  */
-import { cleanName, newCardSpec, type CardSpec } from './card';
+import { clampAmount, cleanName, newCardSpec, type CardSpec } from './card';
 import { randomId } from './prng';
 
 export interface Member {
@@ -22,8 +22,8 @@ export function newMember(m: Partial<Omit<Member, 'id' | 'createdAt'>> & { name:
     id: randomId(6),
     name: cleanName(m.name),
     employer: cleanName(m.employer ?? ''),
-    rateMinor: Math.max(0, Math.round(m.rateMinor ?? 50000)),
-    advMinor: Math.max(0, Math.round(m.advMinor ?? 10000)),
+    rateMinor: clampAmount(m.rateMinor ?? 50000),
+    advMinor: clampAmount(m.advMinor ?? 10000),
     currency: (m.currency ?? 'INR').toUpperCase().slice(0, 3),
     lang: m.lang ?? 'en',
     createdAt: new Date().toISOString(),

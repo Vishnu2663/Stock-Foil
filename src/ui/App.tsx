@@ -7,7 +7,7 @@ import { About } from './pages/About';
 import { Calibrate } from './pages/Calibrate';
 import { Crew } from './pages/Crew';
 import { Demo } from './pages/Demo';
-import { Haunt } from './pages/Haunt';
+import { Story } from './pages/Story';
 import { Home } from './pages/Home';
 import { Income } from './pages/Income';
 import { Issue } from './pages/Issue';
@@ -18,8 +18,9 @@ import { Punch } from './pages/Punch';
 import { Scan } from './pages/Scan';
 import { Settings } from './pages/Settings';
 import { TopNav } from './components/TopNav';
+import { initTilt } from './fx';
 
-const ROUTES = ['home', 'issue', 'punch', 'scan', 'members', 'crew', 'income', 'calibrate', 'demo', 'haunt', 'lab', 'ledger', 'about', 'settings'] as const;
+const ROUTES = ['home', 'issue', 'punch', 'scan', 'members', 'crew', 'income', 'calibrate', 'demo', 'story', 'lab', 'ledger', 'about', 'settings'] as const;
 type Route = (typeof ROUTES)[number];
 
 const readRoute = (): Route => {
@@ -34,6 +35,7 @@ export function App() {
   const [reprintId, setReprintId] = useState<string | null>(null);
   const [draft, setDraft] = useState<Partial<CardSpec> | null>(null);
 
+  useEffect(() => { initTilt(); }, []);
   useEffect(() => {
     const on = () => setRoute(readRoute());
     window.addEventListener('hashchange', on);
@@ -70,6 +72,7 @@ export function App() {
     { route: 'scan', label: t('navScan') },
     { route: 'members', label: 'Members' },
     { route: 'crew', label: 'Crew' },
+    { route: 'story', label: '🎃 Story', accent: true },
   ];
   const groups = [
     { id: 'records', label: 'Records', items: [
@@ -79,18 +82,23 @@ export function App() {
     { id: 'more', label: 'More', items: [
       { route: 'punch', icon: '⭕', label: t('navPunch'), hint: 'How to punch each day' },
       { route: 'demo', icon: '▶️', label: 'Demo', hint: 'The 4 vs 5 days story' },
-      { route: 'haunt', icon: '🎃', label: 'Story mode', hint: 'The 1834 fire, narrated' },
       { route: 'lab', icon: '🧪', label: t('navLab'), hint: 'Simulate, forge, stress-test' },
       { route: 'calibrate', icon: '🎯', label: 'Calibrate', hint: 'Tune to your paper and punch' },
-      { route: 'about', icon: '📜', label: t('navAbout'), hint: 'Security model and limits' },
+      { route: 'about', icon: '📜', label: 'About & security', hint: 'How it is protected, and its limits' },
     ] },
   ];
+  /** edit a saved card: the printed halves cannot change, so it becomes a revised card that replaces it */
+  const editCard = (c: CardSpec) => {
+    setDraft({ worker: c.worker, employer: c.employer, year: c.year, month: c.month, rateMinor: c.rateMinor, advMinor: c.advMinor, currency: c.currency, lang: c.lang, carryMinor: c.carryMinor, revisedFrom: c.id });
+    go('issue');
+  };
   const reprint = reprintId ? loadCards().find((c) => c.id === reprintId) : undefined;
 
   return (
     <AppCtx.Provider value={ctx}>
+      <div className="ambient" aria-hidden><i /><i /><i /></div>
       <TopNav route={route} primary={primary} groups={groups} settings={{ route: 'settings', label: 'Settings' }} />
-      <main className="wrap">
+      <main className="wrap" key={route}>
         {route === 'home' && <Home go={go} />}
         {route === 'issue' && <Issue key={reprintId ?? (draft ? JSON.stringify(draft) : 'new')} initial={reprint} draft={draft ?? undefined} />}
         {route === 'members' && <Members go={go} newCardFor={(d) => { setDraft(d); go('issue'); }} />}
@@ -100,9 +108,9 @@ export function App() {
         {route === 'income' && <Income />}
         {route === 'calibrate' && <Calibrate />}
         {route === 'demo' && <Demo />}
-        {route === 'haunt' && <Haunt />}
+        {route === 'story' && <Story go={go} />}
         {route === 'lab' && <Lab />}
-        {route === 'ledger' && <Ledger go={(r) => { setReprintId(null); go(r); }} reprint={(id) => { setReprintId(id); go('issue'); }} />}
+        {route === 'ledger' && <Ledger go={(r) => { setReprintId(null); go(r); }} reprint={(id) => { setReprintId(id); go('issue'); }} edit={editCard} />}
         {route === 'about' && <About />}
         {route === 'settings' && <Settings />}
       </main>

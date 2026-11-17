@@ -71,3 +71,20 @@ A tamper-proof paper work record that worker and employer each hold half of, ver
 
 ## R15 Calibration
 - R15.1 THE SYSTEM SHALL measure hole contrast, hole size and half-to-half alignment from uploaded photos and suggest thresholds, applying them only on request and allowing a reset.
+
+## R16 QR pairing
+- R16.1 A paired card SHALL carry a secret per half and a tag = SHA-256(id, stockSecret, foilSecret) in the QR; each half carries only its own secret.
+- R16.2 Verification SHALL accept a pair only if the two secrets hash to the tag both halves carry, independent of the cut edge.
+- R16.3 A half fabricated without the other half's secret SHALL NOT pair, even with the right id, code and cut.
+- R16.4 Cards without a pairing code SHALL keep working, with the cut edge as their physical check.
+
+## R17 Editing
+- R17.1 THE SYSTEM SHALL let a member's wage be changed for future cards.
+- R17.2 Editing a saved card SHALL create a revised card (new id, cut and pairing) that replaces it in the list.
+- R17.3 A wage change agreed at payday SHALL apply a new daily wage from a chosen day, appear on the slip, and be committed to by the receipt hash; receipts without one SHALL verify unchanged.
+
+## R18 Limits
+- R18.1 New cards and members SHALL NOT carry a daily wage or advance token above 2,000; cards already printed above that SHALL still decode.
+
+## R19 Presentation
+- R19.1 Story SHALL be a top-level section that runs the real scanner, and all motion SHALL be disabled under prefers-reduced-motion.

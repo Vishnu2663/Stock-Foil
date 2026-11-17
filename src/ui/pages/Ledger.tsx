@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
-import { formatMoney } from '../../core/card';
+import { formatMoney, type CardSpec } from '../../core/card';
 import { clearAll, deleteCard, loadCards, loadReceipts, verifyChain, type Receipt } from '../../store';
 import { useApp } from '../ctx';
 import { download } from '../imageIO';
 import { sheetPdf } from '../../render/pdf';
 import { sheetSvg } from '../../render/sheet';
 
-export function Ledger({ go, reprint }: { go: (r: string) => void; reprint: (id: string) => void }) {
+export function Ledger({ go, reprint, edit }: { go: (r: string) => void; reprint: (id: string) => void; edit: (c: CardSpec) => void }) {
   const { toast } = useApp();
   const [cards, setCards] = useState(loadCards());
   const [receipts, setReceipts] = useState<Receipt[]>(loadReceipts());
@@ -86,6 +86,7 @@ export function Ledger({ go, reprint }: { go: (r: string) => void; reprint: (id:
                   <td>{formatMoney(c.rateMinor, c.currency)}</td>
                   <td>
                     <button className="sm" onClick={async () => { const b = await sheetPdf(sheetSvg(c, c.lang)); const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = `tally-${c.id}.pdf`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 3000); }}>⬇ PDF</button>{' '}
+                    <button className="sm" onClick={() => edit(c)} title="Change the wage, names or month. Makes a revised card that replaces this one.">✎ Edit</button>{' '}
                     <button className="sm" onClick={() => reprint(c.id)}>Reprint</button>{' '}
                     <button className="sm ghost" onClick={() => { deleteCard(c.id); setCards(loadCards()); }}>✕</button>
                   </td>

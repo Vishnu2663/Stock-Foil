@@ -43,6 +43,13 @@ export function Slip({ r, lang, explain }: { r: PairResult; lang: string; explai
           <span className="l">{t(lang, 'slipRate')}</span>
           <b>{m(a.rateMinor)}</b>
         </div>
+        {a.rateChange && (
+          <div className="line">
+            <span className="e">↗</span>
+            <span className="l">{t(lang, 'slipWageChange', { n: a.rateChange.fromDay })}</span>
+            <b>{a.rateChange.daysAfter} × {m(a.rateChange.rateMinor)}</b>
+          </div>
+        )}
         <div className="line">
           <span className="e">＝</span>
           <span className="l">{a.days} × {m(a.rateMinor)} — {t(lang, 'slipGross')}</span>

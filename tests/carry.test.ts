@@ -101,3 +101,39 @@ describe('carrying a debt onto next month\'s card', () => {
     expect(specs.find((s) => s.worker === 'Sita')!.carryMinor).toBe(0);
   });
 });
+
+describe('wage changed mid-month (agreed at payday)', () => {
+  const marks = (n: number) => fc.array(fc.boolean(), { minLength: n, maxLength: n });
+  const arb = fc.record({ sd: marks(31), fd: marks(31), sa: marks(10), fa: marks(10), rate: fc.integer({ min: 0, max: 200000 }), tok: fc.integer({ min: 0, max: 200000 }), carry: fc.integer({ min: -3_000_000, max: 3_000_000 }), newRate: fc.integer({ min: 0, max: 200000 }), from: fc.integer({ min: 1, max: 31 }) });
+
+  it('days before fromDay use the old wage, days from fromDay use the new wage, exactly, in every view', () => {
+    fc.assert(fc.property(arb, (a) => {
+      const c = compareHalves({ days: a.sd, adv: a.sa }, { days: a.fd, adv: a.fa });
+      const p = computePay(c, a.rate, a.tok, a.carry, { fromDay: a.from, rateMinor: a.newRate });
+      const exp = (days: number[], adv: number) => days.filter((d) => d < a.from).length * a.rate + days.filter((d) => d >= a.from).length * a.newRate - adv * a.tok + a.carry;
+      expect(p.agreed.netMinor).toBe(exp(c.agreedDays, c.agreedAdv.length));
+      expect(p.workerView.netMinor).toBe(exp([...c.agreedDays, ...c.stockOnlyDays], c.agreedAdv.length + c.stockOnlyAdv.length));
+      expect(p.employerView.netMinor).toBe(exp([...c.agreedDays, ...c.foilOnlyDays], c.agreedAdv.length + c.foilOnlyAdv.length));
+      expect(p.agreed.rateChange!.daysBefore + p.agreed.rateChange!.daysAfter).toBe(c.agreedDays.length);
+    }), { numRuns: 400 });
+  });
+
+  it('no change, a change that starts after the month, or an unchanged rate all give the ordinary result', () => {
+    fc.assert(fc.property(arb, (a) => {
+      const c = compareHalves({ days: a.sd, adv: a.sa }, { days: a.fd, adv: a.fa });
+      const plain = computePay(c, a.rate, a.tok, a.carry).agreed.netMinor;
+      expect(computePay(c, a.rate, a.tok, a.carry, { fromDay: 32, rateMinor: a.newRate }).agreed.netMinor).toBe(plain);
+      expect(computePay(c, a.rate, a.tok, a.carry, { fromDay: a.from, rateMinor: a.rate }).agreed.netMinor).toBe(plain);
+    }), { numRuns: 300 });
+  });
+
+  it('a raise from day 1 pays every day at the new wage; a raise never touches the disputed split logic', () => {
+    fc.assert(fc.property(arb, (a) => {
+      const c = compareHalves({ days: a.sd, adv: a.sa }, { days: a.fd, adv: a.fa });
+      const p = computePay(c, a.rate, a.tok, a.carry, { fromDay: 1, rateMinor: a.newRate });
+      expect(p.agreed.grossMinor).toBe(c.agreedDays.length * a.newRate);
+      // only days that exist on one half only (and advances) can create a dispute
+      if (c.consistent) expect(p.disputedMinor).toBe(0);
+    }), { numRuns: 300 });
+  });
+});

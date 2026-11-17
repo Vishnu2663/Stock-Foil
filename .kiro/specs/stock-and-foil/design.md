@@ -35,3 +35,10 @@
 - P9 Honest pair: always `genuine-consistent` under independent random conditions.
 - P10 Authenticity: foreign card, changed rate, forged cut line are all rejected.
 - P11 Never silently wrong: outside the supported envelope, a wrong reading always carries a warning or an "unsure" flag.
+
+## QR pairing (decision record)
+- **Problem:** the cut edge as the only pair check meant a sloppy or re-trimmed cut rejected genuine pairs, and a QR that merely repeats id and code proves nothing (anyone can copy a QR).
+- **First attempt, abandoned:** a second small pairing QR on each half. jsQR picks finder-pattern triples across both codes and sometimes decodes neither, so detection became unreliable. Found by a property test.
+- **Chosen:** one QR carrying this half's secret and the shared tag (`SF1p`/`SF2p`). The QR is about 10% denser; property tests at 100 runs show scanning is unaffected.
+- **Why a hash and not a signature:** nothing to key or trust offline; the secret never has to leave the card.
+- **Backward compatibility:** SF1/SF2 cards decode as before; a card with no balance and no pairing encodes byte-for-byte as it always did (tested).
