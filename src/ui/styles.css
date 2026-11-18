@@ -1344,19 +1344,3 @@ body.simple .mtab .nav-ic svg { width: 26px; height: 26px; }
   .cta-top.on { box-shadow: 0 0 0 3px rgba(255, 255, 255, .3), 0 6px 16px rgba(200, 70, 50, .5); }
   .top .brand { flex: 1 1 auto; }
 }
-
-/* the red Payday scan button sits in the middle of the nav row */
-.cta-gap { display: none; }
-@media (min-width: 1001px) {
-  .top nav .cta-gap { display: block; flex: 1 0 0; min-width: 8px; }
-}
-@media (min-width: 1001px) {
-  .top nav > a.settings-btn { margin-left: 6px; }
-}
-/* the middle scan button needs the row a little wider: tuck the settings label away until there is room */
-@media (min-width: 1240px) and (max-width: 1399px) {
-  .settings-top .settings-label { display: none; }
-}
-@media (min-width: 1240px) and (max-width: 1289px) {
-  .top nav > a:not(.cta) .nav-ic, .top nav .dd-btn .nav-ic { display: none !important; }
-}
