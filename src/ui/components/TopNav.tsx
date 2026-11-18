@@ -54,12 +54,16 @@ function DdIcon({ route, fallback }: { route: string; fallback: string }) {
   return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" width="21" height="21">{g}</svg>;
 }
 
+const LEFT = ['home', 'issue', 'members'];
+
 export function TopNav({ route, primary, groups, settings }: { route: string; primary: NavItem[]; groups: Group[]; settings: NavItem }) {
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const [panel, setPanel] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const root = useRef<HTMLElement>(null);
   const navRef = useRef<HTMLElement>(null);
+  const gapL = useRef<HTMLSpanElement>(null);
+  const gapR = useRef<HTMLSpanElement>(null);
   const [prog, setProg] = useState(0);
   const [pill, setPill] = useState<{ x: number; y: number; w: number; h: number; tone: 'red' | 'accent'; away: boolean } | null>(null);
 
@@ -94,6 +98,19 @@ export function TopNav({ route, primary, groups, settings }: { route: string; pr
   }, []);
 
   /** the nav items the gliding pill can sit under (not Settings, which has its own look) */
+  /** keep the red scan button at the exact middle of the row, whatever the widths on each side */
+  const centreScan = () => {
+    const nav = navRef.current, a = gapL.current, b = gapR.current;
+    const cta = nav?.querySelector<HTMLElement>(':scope > a.cta');
+    if (!nav || !a || !b || !cta) return;
+    a.style.flexBasis = b.style.flexBasis = '';
+    cta.style.translate = '';
+    if (!window.matchMedia('(min-width: 1001px)').matches) return;
+    const n = nav.getBoundingClientRect(), l = a.getBoundingClientRect(), r = b.getBoundingClientRect();
+    const left = l.left - n.left, right = n.right - r.right; // content on each side of the button
+    // pad the lighter side so both sides are equally wide: the button then sits at the true middle
+    if (right > left) a.style.flexBasis = `${right - left + 8}px`; else b.style.flexBasis = `${left - right + 8}px`;
+  };
   const pillItems = () => Array.from(navRef.current?.querySelectorAll<HTMLElement>(':scope > a:not(.settings-btn), :scope .dd-btn') ?? []);
   const activeItem = () => pillItems().find((e) => e.classList.contains('on')) ?? null;
   const placePill = (el: HTMLElement | null, away: boolean) => {
@@ -105,7 +122,7 @@ export function TopNav({ route, primary, groups, settings }: { route: string; pr
   };
   // settle under the current page, and re-measure on resize / once fonts have loaded
   useEffect(() => {
-    const settle = () => placePill(activeItem(), false);
+    const settle = () => { centreScan(); placePill(activeItem(), false); };
     const id = requestAnimationFrame(settle);
     window.addEventListener('resize', settle);
     document.fonts?.ready.then(settle).catch(() => undefined);
@@ -189,7 +206,15 @@ export function TopNav({ route, primary, groups, settings }: { route: string; pr
           onPointerLeave={() => placePill(activeItem(), false)}
         >
           {pill && <span className="nav-pill" data-tone={pill.tone} style={{ transform: `translate(${pill.x}px, ${pill.y}px)`, width: pill.w, height: pill.h }} aria-hidden />}
-          {primary.map((i) => (
+          {primary.filter((i) => LEFT.includes(i.route)).map((i) => (
+            <a key={i.route} href={`#/${i.route}`} style={{ ['--hue' as string]: NAV_HUE[i.route] ?? '#ff8a3d' }} className={`${route === i.route ? 'on' : ''} ${i.accent ? 'accent' : ''} ${i.route === 'scan' ? 'cta' : ''}`} aria-current={route === i.route ? 'page' : undefined}><NavIcon id={i.route} fallback={i.icon} /><span className="nav-lbl">{i.label}</span></a>
+          ))}
+          <span className="cta-gap" ref={gapL} aria-hidden />
+          {primary.filter((i) => i.route === 'scan').map((i) => (
+            <a key={i.route} href={`#/${i.route}`} style={{ ['--hue' as string]: NAV_HUE[i.route] ?? '#ff8a3d' }} className={`${route === i.route ? 'on' : ''} ${i.accent ? 'accent' : ''} ${i.route === 'scan' ? 'cta' : ''}`} aria-current={route === i.route ? 'page' : undefined}><NavIcon id={i.route} fallback={i.icon} /><span className="nav-lbl">{i.label}</span></a>
+          ))}
+          <span className="cta-gap" ref={gapR} aria-hidden />
+          {primary.filter((i) => !LEFT.includes(i.route) && i.route !== 'scan').map((i) => (
             <a key={i.route} href={`#/${i.route}`} style={{ ['--hue' as string]: NAV_HUE[i.route] ?? '#ff8a3d' }} className={`${route === i.route ? 'on' : ''} ${i.accent ? 'accent' : ''} ${i.route === 'scan' ? 'cta' : ''}`} aria-current={route === i.route ? 'page' : undefined}><NavIcon id={i.route} fallback={i.icon} /><span className="nav-lbl">{i.label}</span></a>
           ))}
           {groups.map((g) => {
