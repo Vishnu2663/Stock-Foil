@@ -59,6 +59,12 @@ export function TopNav({ route, primary, groups, settings }: { route: string; pr
   const [panel, setPanel] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const root = useRef<HTMLElement>(null);
+  // the red scan button sits in the middle of the row: three links before it, the rest after
+  const navOrder = (() => {
+    const rest = primary.filter((i) => i.route !== 'scan');
+    const scan = primary.filter((i) => i.route === 'scan');
+    return [...rest.slice(0, 3), ...scan, ...rest.slice(3)];
+  })();
   const navRef = useRef<HTMLElement>(null);
   const [prog, setProg] = useState(0);
   const [pill, setPill] = useState<{ x: number; y: number; w: number; h: number; tone: 'red' | 'accent'; away: boolean } | null>(null);
@@ -189,7 +195,8 @@ export function TopNav({ route, primary, groups, settings }: { route: string; pr
           onPointerLeave={() => placePill(activeItem(), false)}
         >
           {pill && <span className="nav-pill" data-tone={pill.tone} style={{ transform: `translate(${pill.x}px, ${pill.y}px)`, width: pill.w, height: pill.h }} aria-hidden />}
-          {primary.map((i) => (
+          {/* the red scan button sits in the middle of the row: Members comes before it */}
+          {navOrder.map((i) => (
             <a key={i.route} href={`#/${i.route}`} style={{ ['--hue' as string]: NAV_HUE[i.route] ?? '#ff8a3d' }} className={`${route === i.route ? 'on' : ''} ${i.accent ? 'accent' : ''} ${i.route === 'scan' ? 'cta' : ''}`} aria-current={route === i.route ? 'page' : undefined}><NavIcon id={i.route} fallback={i.icon} /><span className="nav-lbl">{i.label}</span></a>
           ))}
           {groups.map((g) => {
