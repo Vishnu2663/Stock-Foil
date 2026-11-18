@@ -3,6 +3,7 @@ import { explainPay } from '../../ai';
 import { daysInMonth, firstWeekday, formatMoney, MAX_AMOUNT_MAJOR } from '../../core/card';
 import { AmountInput } from './AmountInput';
 import { PaydayCard } from './PaydayCard';
+import { SimpleResult } from './SimpleResult';
 import { PayBreakdown } from './PayBreakdown';
 import { useCountUp } from '../fx';
 import { weekdayShort, monthName, t } from '../../i18n';
@@ -144,6 +145,7 @@ export function Results({ stock, foil, onReset }: { stock: Captured; foil: Captu
         <span className="small sans">Done with this card?</span>
         <button className="primary" onClick={onReset}>📷 Scan another card</button>
       </div>
+      {settings.simple && <SimpleResult r={r} full={dayTypes.full.length} half={dayTypes.half.length} netMinor={net} money={m} currency={spec.currency} blocked={blocked} />}
       <PaydayCard
         spec={spec}
         lang={lang}

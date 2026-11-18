@@ -40,6 +40,12 @@ export interface CardSpec {
    * before it existed, which keep their single circle per date and their original card code.
    */
   halves?: boolean;
+  /**
+   * Printed targets: every punch circle has a grey disc printed in it. Punching removes the disc, so a hole
+   * is read as "the grey is gone" whatever is behind it (a dark cloth, a white table, a wooden bench), and the
+   * card can be photographed on any plain surface. Absent on cards printed before this existed.
+   */
+  discs?: boolean;
   /** id of the card this one replaced when it was edited (local record only) */
   revisedFrom?: string;
 }
@@ -74,6 +80,7 @@ export function newCardSpec(input: Partial<Omit<CardSpec, 'v' | 'id'>> & { id?: 
     carryMinor: Math.round(input.carryMinor ?? 0),
     ...(input.pairing ? { pairing: input.pairing } : {}),
     ...(input.halves ? { halves: true } : {}),
+    ...(input.discs ? { discs: true } : {}),
     ...(input.revisedFrom ? { revisedFrom: input.revisedFrom } : {}),
   };
 }
@@ -88,6 +95,7 @@ export function cardCode(spec: CardSpec): string {
   // only mixed in when non-zero, so every card printed before carry-forward existed keeps its code
   if (spec.carryMinor) parts.push('c' + spec.carryMinor);
   if (spec.halves) parts.push('h2'); // half-day circles change the card layout, so they are part of the code
+  if (spec.discs) parts.push('d3'); // printed discs change how holes are read, so they are part of the code
   const s = parts.join('|');
   const c = toBase32(hash53(s, 0x5f0), 6);
   return `${c.slice(0, 3)}-${c.slice(3)}`;
@@ -103,7 +111,8 @@ export function waveSeed(spec: Pick<CardSpec, 'id'>): number {
  *   SF1|role|id|yyyymm|rate|adv|cur|lang|code|worker|employer
  * A balance brought forward uses SF2 (adds carry before code):
  *   SF2|role|id|yyyymm|rate|adv|cur|lang|carry|code|worker|employer
- * A trailing 'h' (SF1h, SF1ph, SF2h…) means the card has two half-day circles per date.
+ * A trailing 'h' (SF1h, SF1ph, SF2h…) means the card has two half-day circles per date; a further 'd' (SF1phd…)
+ * means a grey disc is printed in every circle.
  * A trailing 'p' on the version (SF1p, SF2p) means the card is cryptographically paired:
  * this half's own secret and the pair tag follow the code, before the names:
  *   SF1p|role|id|yyyymm|rate|adv|cur|lang|code|secret|tag|worker|employer
@@ -113,7 +122,7 @@ export function encodePayload(spec: CardSpec, role: Role): string {
   const ym = `${spec.year}${String(spec.month).padStart(2, '0')}`;
   const code = cardCode(spec).replace('-', '');
   const pair = spec.pairing ? [role === 'S' ? spec.pairing.sa : spec.pairing.sf, pairTag(spec.id, spec.pairing.sa, spec.pairing.sf)] : [];
-  const flag = (spec.pairing ? 'p' : '') + (spec.halves ? 'h' : '');
+  const flag = (spec.pairing ? 'p' : '') + (spec.halves ? 'h' : '') + (spec.discs ? 'd' : '');
   const head = ['SF' + (spec.carryMinor ? '2' : '1') + flag, role, spec.id, ym, spec.rateMinor, spec.advMinor, spec.currency, spec.lang];
   return [...head, ...(spec.carryMinor ? [spec.carryMinor] : []), code, ...pair, spec.worker, spec.employer].join('|');
 }
@@ -131,11 +140,12 @@ export interface DecodedPayload {
 
 export function decodePayload(text: string): DecodedPayload | null {
   const p = text.split('|');
-  const m = /^SF([12])(p?)(h?)$/.exec(p[0]);
+  const m = /^SF([12])(p?)(h?)(d?)$/.exec(p[0]);
   if (!m) return null;
   const hasCarry = m[1] === '2';
   const paired = m[2] === 'p';
   const halves = m[3] === 'h';
+  const discs = m[4] === 'd';
   const carryAt = hasCarry ? 8 : -1;
   const codeAt = hasCarry ? 9 : 8;
   const secretAt = paired ? codeAt + 1 : -1;
@@ -169,6 +179,7 @@ export function decodePayload(text: string): DecodedPayload | null {
     worker: p[nameAt],
     employer: p.slice(nameAt + 1).join('|'),
     ...(halves ? { halves: true } : {}),
+    ...(discs ? { discs: true } : {}),
   };
   const codeOk = cardCode(spec).replace('-', '') === p[codeAt];
   return { spec, role, codeOk, pairing: paired, ...(pair ? { pair } : {}) };

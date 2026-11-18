@@ -9,7 +9,7 @@ const files = [];
 for (const root of roots) (function walk(d) { for (const f of fs.readdirSync(d)) { const p = path.join(d, f); if (fs.statSync(p).isDirectory()) walk(p); else if (/\.tsx?$/.test(f)) files.push(p); } })(root);
 
 const ATTRS = new Set(['placeholder', 'title', 'aria-label', 'alt', 'label', 'hint', 'summary', 'stamp', 'sub', 'caption', 'tip']);
-const CALLS = new Set(['toast', 'setMsg', 'setErr', 'confirm', 'alert']);
+const CALLS = new Set(['toast', 'setMsg', 'setErr', 'confirm', 'alert', 'setHint', 'setFlash']);
 const KEYS = new Set(['label', 'title', 'hint', 'back', 'desc', 'sub', 'note', 'caption', 'text', 'tip', 'msg', 'detail', 'what', 'name', 'short', 'warning', 'reason', 'explanation', 'help']);
 const found = new Map(); // string -> Set(file)
 const ENT = { amp: '&', nbsp: ' ', quot: '"', apos: "'", lt: '<', gt: '>', rsquo: '’', lsquo: '‘', rdquo: '”', ldquo: '“', mdash: '—', ndash: '–', hellip: '…', times: '×', larr: '←', rarr: '→', middot: '·', bull: '•' };
@@ -56,6 +56,8 @@ for (const f of files) {
     } else if (ts.isArrayLiteralExpression(n) && n.elements.length >= 2 && n.elements.every((e) => ts.isStringLiteral(e) || ts.isArrayLiteralExpression(e))) {
       const flat = (e) => (ts.isArrayLiteralExpression(e) ? e.elements.flatMap(flat) : ts.isStringLiteral(e) ? [e.text] : []);
       n.elements.flatMap(flat).filter((t) => /^[A-Z⏳💰🧱]/u.test(t) || t.includes(' ')).forEach((t) => add(t, f));
+    } else if (ts.isVariableDeclaration(n) && ts.isIdentifier(n.name) && /^(reason|hint|msg|tip)$/.test(n.name.text) && n.initializer) {
+      strs(n.initializer).forEach((s) => add(s, f, true));
     } else if (ts.isVariableDeclaration(n) && ts.isIdentifier(n.name) && /^[A-Z_]{3,}$/.test(n.name.text) && n.initializer && ts.isArrayLiteralExpression(n.initializer)) {
       n.initializer.elements.forEach((e) => strs(e).forEach((s) => add(s, f)));
     }

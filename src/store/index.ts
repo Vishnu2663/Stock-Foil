@@ -19,6 +19,8 @@ export interface Settings {
   customModel: string;
   customKey: string;
   speakRate: number;
+  /** pictures-and-voice mode: big pictures and buttons, Listen on every page, spoken scan prompts and result */
+  simple: boolean;
   /** thresholds measured from real photos (Calibrate page); unset = defaults */
   calibration: { punchRatio?: number; alignTolMm?: number };
 }
@@ -31,6 +33,7 @@ export const DEFAULT_SETTINGS: Settings = {
   customModel: 'meta-llama/llama-3.3-70b-instruct:free',
   customKey: '',
   speakRate: 0.9,
+  simple: false,
   calibration: {},
 };
 

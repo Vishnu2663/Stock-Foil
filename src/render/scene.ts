@@ -81,6 +81,8 @@ export interface PhotoConditions {
   /** gamma */
   gamma: number;
   seed: number;
+  /** brightness of whatever the card lies on (default: a dark cloth); holes show it */
+  surface?: number;
 }
 
 export const CLEAN: PhotoConditions = {
@@ -141,6 +143,8 @@ interface Prepared {
 const PAPER = 0.9;
 const INK = 0.14;
 const SURFACE = 0.06;
+/** printed grey disc, about 60% of the paper's brightness */
+const DISC = 0.54;
 
 function cellAt(prep: Prepared, x: number, y: number): { cell: Cell; punched: boolean } | null {
   if (x >= GRID_X && x < GRID_X + 7 * CELL_W && y >= GRID_Y && y < GRID_Y + GRID_ROWS * CELL_H) {
@@ -196,6 +200,16 @@ function shade(prep: Prepared, x: number, y: number): number | null {
       const hp = prep.holeAt.get(`p${cell.n}`);
       if (hp && Math.hypot(x - hp.x, y - hp.y) <= HOLE_R) return null;
     }
+    // printed grey discs in every target that has not been punched out
+    if (prep.inst.spec.discs) {
+      const targets: [string, boolean][] = cell.kind === 'adv'
+        ? [[`a${cell.n}`, prep.advPunched.has(cell.n)]]
+        : [[`d${cell.n}`, prep.dayPunched.has(cell.n)], ...(prep.pcells.length ? [[`p${cell.n}`, prep.pmPunched.has(cell.n)] as [string, boolean]] : [])];
+      for (const [key, punched] of targets) {
+        const hp = prep.holeAt.get(key);
+        if (!punched && hp && Math.hypot(x - hp.x, y - hp.y) <= HOLE_R) return DISC;
+      }
+    }
     // grid lines
     const lx = Math.min(x - cell.x, cell.x + cell.w - x);
     const ly = Math.min(y - cell.y, cell.y + cell.h - y);
@@ -245,7 +259,7 @@ export function renderScene(halves: HalfInstance[], cond: PhotoConditions, w = I
         for (let si = 0; si < sub; si++) {
           const px = i + (si + 0.5) / sub - 0.5;
           const py = j + (sj + 0.5) / sub - 0.5;
-          let v = SURFACE;
+          let v = cond.surface ?? SURFACE;
           let onPaper = false;
           for (const p of preps) {
             const f = applyH(p.inv, { x: px, y: py });

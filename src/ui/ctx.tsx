@@ -14,7 +14,7 @@ export interface Ctx {
 }
 
 export const AppCtx = createContext<Ctx>({
-  settings: { lang: 'en', aiProvider: 'off', aiNote: true, customUrl: '', customModel: '', customKey: '', speakRate: 0.9, calibration: {} },
+  settings: { lang: 'en', aiProvider: 'off', aiNote: true, customUrl: '', customModel: '', customKey: '', speakRate: 0.9, simple: false, calibration: {} },
   setSettings: () => undefined,
   lang: 'en',
   t: (k) => tr('en', k),

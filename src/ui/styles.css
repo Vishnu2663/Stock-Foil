@@ -1295,3 +1295,52 @@ input[type='file'] { max-width: 100%; min-width: 0; }
 }
 /* nothing may widen the page sideways on a phone (the stamp slamming in, a long word...); clip, not hidden, so sticky bars keep working */
 @media (max-width: 1000px) { .pc { overflow-x: clip; } main.wrap { overflow-x: clip; } html, body { overflow-x: clip; } }
+.cam-ov { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+
+/* ================= pictures-and-voice mode (Settings): for people who cannot read the screen ================= */
+body.simple { font-size: 112%; }
+body.simple button { min-height: 52px; font-size: 1.08rem; }
+body.simple .small, body.simple small { font-size: .92rem; }
+body.simple .kicker { display: none; }
+.listen-fab { position: fixed; right: 14px; bottom: calc(86px + env(safe-area-inset-bottom)); z-index: 58; display: inline-flex; align-items: center; gap: 10px; min-height: 60px; padding: 0 22px 0 16px; border-radius: 999px; border: 0; background: linear-gradient(135deg, #3d9a62, #2a7a4b); color: #fff; font: 800 1.1rem system-ui, sans-serif; box-shadow: 0 10px 28px rgba(30, 120, 70, .55); }
+.listen-fab.on { background: linear-gradient(135deg, #d9533f, #a8321f); box-shadow: 0 10px 28px rgba(200, 70, 50, .55); animation: listenPulse 1.4s ease-in-out infinite; }
+@keyframes listenPulse { 50% { transform: scale(1.04); } }
+@media (min-width: 1001px) { .listen-fab { bottom: 24px; right: 24px; } }
+@media (prefers-reduced-motion: reduce) { .listen-fab.on { animation: none; } }
+
+.simple-result { margin: 0 0 16px; padding: 18px; border-radius: 24px; border: 2px solid color-mix(in srgb, #3d9a62 55%, transparent); background: color-mix(in srgb, #3d9a62 9%, var(--card)); font-family: system-ui, sans-serif; }
+.sr-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.sr-top small, .sr-block small { display: block; font: 800 .8rem system-ui, sans-serif; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-2); }
+.sr-amount { font: 800 3.3rem 'Iowan Old Style', Georgia, serif; line-height: 1.05; font-variant-numeric: tabular-nums; }
+.sr-listen { display: inline-flex; align-items: center; gap: 10px; min-height: 64px; padding: 0 22px; border-radius: 20px; border: 0; background: linear-gradient(135deg, #3d9a62, #2a7a4b); color: #fff; font: 800 1.15rem system-ui, sans-serif; }
+.sr-block { margin-top: 16px; }
+.sr-suns { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.sr-none { font: 800 1.6rem system-ui, sans-serif; color: var(--ink-2); }
+.sr-key { display: flex; align-items: center; gap: 6px; margin-top: 6px; font-size: .85rem; color: var(--ink-2); }
+.sr-key svg { width: 22px; height: 22px; }
+.sr-notes { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 8px; }
+.sr-note { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-width: 130px; padding: 12px 14px; border-radius: 10px; background: color-mix(in srgb, var(--hue) 28%, var(--card)); border: 2px solid var(--hue); box-shadow: inset 0 0 0 4px color-mix(in srgb, var(--hue) 14%, transparent); }
+.sr-note b { font: 800 1.6rem 'Iowan Old Style', Georgia, serif; }
+.sr-note i { font: 800 1.2rem system-ui, sans-serif; font-style: normal; }
+@media (max-width: 640px) { .sr-amount { font-size: 2.7rem; } }
+body.simple .mtab, body.simple button.mtab { font-size: .72rem; min-height: 60px; }
+body.simple .mtab .nav-ic { width: 34px; height: 34px; }
+body.simple .mtab .nav-ic svg { width: 26px; height: 26px; }
+
+/* ---- Payday scan: the main job, so it is the one red button in the navigation, with its scan icon always shown ---- */
+@media (min-width: 1001px) {
+  .top nav > a.cta, .top nav.has-pill > a.cta, .top nav > a.cta:hover, .top nav > a.cta.on { background: linear-gradient(135deg, #e2584a, #b3321f); color: #fff; padding: 0 16px 0 12px; box-shadow: 0 6px 18px rgba(200, 70, 50, .45), inset 0 1px 0 rgba(255, 255, 255, .28); }
+  .top nav > a.cta:hover { transform: translateY(-1px); filter: brightness(1.07); }
+  .top nav > a.cta .nav-ic, .top nav > a.cta:hover .nav-ic { display: inline-grid !important; color: #fff; }
+  .top nav > a.cta .nav-lbl { background: none; -webkit-text-fill-color: #fff; color: #fff; }
+  .top nav > a.cta.on { box-shadow: 0 0 0 2px rgba(255, 255, 255, .35), 0 6px 18px rgba(200, 70, 50, .5); }
+}
+
+/* phones: the red Payday scan button sits in the top bar (on desktop it is the red item in the navigation row) */
+.cta-top { display: none; }
+@media (max-width: 1000px) {
+  .cta-top { display: inline-flex; align-items: center; justify-content: center; flex: none; width: 44px; height: 44px; border-radius: 14px; color: #fff; background: linear-gradient(135deg, #e2584a, #b3321f); box-shadow: 0 6px 16px rgba(200, 70, 50, .5), inset 0 1px 0 rgba(255, 255, 255, .3); -webkit-tap-highlight-color: transparent; transition: transform .15s; }
+  .cta-top:active { transform: scale(.92); }
+  .cta-top.on { box-shadow: 0 0 0 3px rgba(255, 255, 255, .3), 0 6px 16px rgba(200, 70, 50, .5); }
+  .top .brand { flex: 1 1 auto; }
+}

@@ -76,17 +76,19 @@ function half(spec: CardSpec, role: Role, lang: string): string {
   }
   // ---- day cells (weekend columns lightly tinted)
   const halves = !!spec.halves;
+  // one punch target: a dashed ring, and (printed-disc cards) a grey disc that punching removes
+  const ring = (cx: number, cy: number) => (spec.discs ? `<circle cx="${cx}" cy="${cy}" r="${HOLE_R}" fill="#9d9d9d"/>` : '') + `<circle cx="${cx}" cy="${cy}" r="${HOLE_R}" fill="none" stroke="#a39d90" stroke-width="0.15" stroke-dasharray="0.7 0.7"/>`;
   for (const c of dayCells(spec.year, spec.month, halves)) {
     const weekend = Math.round((c.x - GRID_X) / CELL_W) >= 5;
     parts.push(`<rect x="${c.x}" y="${c.y}" width="${c.w}" height="${c.h}" fill="${weekend ? '#f6f2e8' : 'none'}" stroke="${line}" stroke-width="0.25"/>`);
     parts.push(`<text x="${c.x + 1.1}" y="${c.y + 3.3}" font-size="3" font-weight="700" fill="${ink}">${c.n}</text>`);
-    parts.push(`<circle cx="${c.cx}" cy="${c.cy}" r="${HOLE_R}" fill="none" stroke="#a39d90" stroke-width="0.15" stroke-dasharray="0.7 0.7"/>`);
+    parts.push(ring(c.cx, c.cy));
     // half-day cards: a faint divider between the first-half and second-half circles
     if (halves) parts.push(`<line x1="${c.x + c.w / 2}" y1="${c.y + 4.2}" x2="${c.x + c.w / 2}" y2="${c.y + c.h - 0.9}" stroke="#c9c3b6" stroke-width="0.2" stroke-dasharray="0.6 0.8"/>`);
   }
   if (halves) {
     for (const c of pmCells(spec.year, spec.month)) {
-      parts.push(`<circle cx="${c.cx}" cy="${c.cy}" r="${HOLE_R}" fill="none" stroke="#a39d90" stroke-width="0.15" stroke-dasharray="0.7 0.7"/>`);
+      parts.push(ring(c.cx, c.cy));
     }
   }
   void daysInMonth;
@@ -96,7 +98,7 @@ function half(spec: CardSpec, role: Role, lang: string): string {
   for (const c of advCells()) {
     parts.push(`<rect x="${c.x}" y="${c.y}" width="${c.w}" height="${c.h}" fill="#f4f0e6" stroke="${line}" stroke-width="0.25"/>`);
     parts.push(`<text x="${c.x + 1}" y="${c.y + 3.1}" font-size="2.6" font-weight="600" fill="${ink}">${c.n}</text>`);
-    parts.push(`<circle cx="${c.cx}" cy="${c.cy}" r="${HOLE_R}" fill="none" stroke="#a39d90" stroke-width="0.15" stroke-dasharray="0.7 0.7"/>`);
+    parts.push(ring(c.cx, c.cy));
   }
 
   // ---- right-hand panel (the space under the main QR): pairing QR, rate, card code
@@ -114,6 +116,10 @@ function half(spec: CardSpec, role: Role, lang: string): string {
     parts.push(box(92, 10) + `<text x="${cx}" y="${92 + 6.4}" font-size="3.2" font-weight="800" text-anchor="middle" fill="#1f6b3c">✓ ${esc(t(lang, 'pairedBadge'))}</text>`);
   }
 
+  if (spec.discs) {
+    const dn = t(lang, 'discNote');
+    parts.push(`<text x="${FRAME_W - 14}" y="${FRAME_H - 7.4}" font-size="${fit(dn, 62, 2.6)}" font-weight="600" text-anchor="end" fill="${soft}">${esc(dn)}</text>`);
+  }
   // ---- footer
   parts.push(`<text x="14" y="${FRAME_H - 3.5}" font-size="2.6" fill="${soft}">${esc(stock ? t(lang, 'keepStock') : t(lang, 'keepFoil'))}</text>`);
   if (spec.halves) {

@@ -21,6 +21,7 @@ import { Settings } from './pages/Settings';
 import { TopNav } from './components/TopNav';
 import { initReveal, initRipple, initScrollPause, initTilt } from './fx';
 import { setUiLanguage } from '../i18n/dom';
+import { ReadAloud } from './components/ReadAloud';
 import { HolesField } from './components/HolesField';
 
 const ROUTES = ['home', 'issue', 'punch', 'scan', 'members', 'crew', 'income', 'calibrate', 'demo', 'story', 'lab', 'history', 'ledger', 'about', 'settings'] as const;
@@ -57,6 +58,7 @@ export function App() {
     // the whole page, not just the parts that already have translations
     void setUiLanguage(settings.lang);
   }, [settings.lang]);
+  useEffect(() => { document.body.classList.toggle('simple', !!settings.simple); }, [settings.simple]);
 
   const go = useCallback((r: string) => {
     location.hash = `#/${r}`;
@@ -100,7 +102,7 @@ export function App() {
   ];
   /** edit a saved card: the printed halves cannot change, so it becomes a revised card that replaces it */
   const editCard = (c: CardSpec) => {
-    setDraft({ worker: c.worker, employer: c.employer, year: c.year, month: c.month, rateMinor: c.rateMinor, advMinor: c.advMinor, currency: c.currency, lang: c.lang, carryMinor: c.carryMinor, halves: !!c.halves, revisedFrom: c.id });
+    setDraft({ worker: c.worker, employer: c.employer, year: c.year, month: c.month, rateMinor: c.rateMinor, advMinor: c.advMinor, currency: c.currency, lang: c.lang, carryMinor: c.carryMinor, halves: !!c.halves, discs: !!c.discs, revisedFrom: c.id });
     go('issue');
   };
   const reprint = reprintId ? loadCards().find((c) => c.id === reprintId) : undefined;
@@ -109,6 +111,7 @@ export function App() {
     <AppCtx.Provider value={ctx}>
       <div className="ambient" aria-hidden><i /><i /><i /></div>
       <HolesField />
+      {settings.simple && <ReadAloud route={route} />}
       <TopNav route={route} primary={primary} groups={groups} settings={{ route: 'settings', label: 'Settings' }} />
       <main className="wrap" key={route}>
         {route === 'home' && <Home go={go} />}

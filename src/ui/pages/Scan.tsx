@@ -151,7 +151,7 @@ export function Scan({ preset }: { preset?: Slots }) {
           </div>
           {msg && <p className="card flat sans" style={{ marginTop: 12, borderColor: 'var(--bad)' }}>⚠ {msg}</p>}
           <div className="sc-tips" aria-label="Photo tips">
-            <div><i><BtnIcon name="moon" /></i><b>Dark, plain surface</b><span>A dark cloth works. The cut edge and holes show up against it.</span></div>
+            <div><i><BtnIcon name="moon" /></i><b>Plain surface</b><span>Cards with grey discs work on any plain table. Older cards need a dark cloth so holes and the cut edge show.</span></div>
             <div><i><BtnIcon name="frame" /></i><b>Whole half in view</b><span>The four black corner squares, the QR and the wavy edge.</span></div>
             <div><i><BtnIcon name="angle" /></i><b>Hold it above</b><span>Roughly parallel to the table. Tilt and rotation are fine.</span></div>
             <div><i><BtnIcon name="bulb" /></i><b>Even light</b><span>No glare or shadows across the holes. Add light if asked.</span></div>

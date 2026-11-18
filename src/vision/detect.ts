@@ -35,6 +35,11 @@ export interface DetectOptions {
   maxQr?: number;
 }
 
+/** expected brightness of an intact printed disc relative to the paper around it */
+const DISC_RATIO = 0.62;
+/** how far from the intact grey a target must be to count as a hole */
+const DISC_HOLE = 0.15;
+
 export const DEFAULTS: Required<DetectOptions> = {
   punchRatio: 0.62,
   uncertainBand: [0.48, 0.78],
@@ -75,6 +80,8 @@ export interface HalfScan {
   pxPerMm: number;
   paperRef: number;
   bgRef: number;
+  /** printed-disc card on a surface about as bright as the disc: a hole cannot be told from an intact disc, so every circle is marked unsure */
+  ambiguousSurface?: boolean;
   days: CellReading[];
   /** second-half circles (empty on cards without half-day circles) */
   pm: CellReading[];
@@ -482,12 +489,12 @@ function refinePose(g: Gray, qrImg: Pt[]): { H: H | null; found: { card: Pt; img
  * so grid lines are never included; the printed-digit box is masked out so a
  * hole next to a number cannot merge with it.
  */
-function holeCentre(g: Gray, H: H, c: Pt, ref: number, skip: { x0: number; y0: number; x1: number; y1: number }): { dx: number; dy: number; r: number; clipped: boolean } | null {
+function holeCentre(g: Gray, H: H, c: Pt, ref: number, skip: { x0: number; y0: number; x1: number; y1: number }, thrOverride?: number): { dx: number; dy: number; r: number; clipped: boolean } | null {
   const R = 6;
   const step = 0.25;
   const n = Math.round((2 * R) / step) + 1;
   const dark = new Uint8Array(n * n);
-  const thr = ref * 0.4;
+  const thr = thrOverride ?? ref * 0.4;
   for (let j = 0; j < n; j++) {
     for (let i = 0; i < n; i++) {
       const x = -R + i * step, y = -R + j * step;
@@ -568,21 +575,39 @@ export function readHalf(g: Gray, qrImg: Pt[], payload: DecodedPayload, o: Requi
   }
   const paperRef = median(refs);
   const step = Math.max(0.25, Math.min(0.5, 1 / pxPerMm));
-  const readings: CellReading[] = cells.map((c) => {
+  // pass 1: brightness of every punch target relative to the paper beside it
+  const raw = cells.map((c) => {
     const centre = discMean(g, H, { x: c.cx, y: c.cy }, SAMPLE_R, step);
     let ref = cellRef.get(c)!;
     if (!Number.isFinite(ref) || ref < paperRef * 0.7) ref = paperRef;
-    const ratio = centre / ref;
+    return { c, centre, ref, ratio: centre / ref };
+  });
+  // Printed discs: an intact target is the printed grey (about 0.6 of the paper); a hole is anything clearly
+  // different, darker (a dark table behind it) or brighter (a light one). The grey is measured on the card itself,
+  // from the targets that are still intact, so printers and lighting do not matter.
+  const discs = !!spec.discs;
+  let grey = DISC_RATIO;
+  if (discs) {
+    const band = raw.map((r) => r.ratio).filter((x) => Number.isFinite(x) && Math.abs(x - DISC_RATIO) < 0.17).sort((a, b) => a - b);
+    if (band.length >= 3) grey = band[Math.floor(band.length / 2)];
+  }
+  const readings: CellReading[] = raw.map(({ c, centre, ref, ratio }) => {
     // A target we could not see is never read as "no hole": it is flagged unsure.
     const unseen = !Number.isFinite(ratio);
-    const punched = !unseen && ratio < o.punchRatio;
-    const hc = punched ? holeCentre(g, H, { x: c.cx, y: c.cy }, ref, { x0: c.x, y0: c.y, x1: c.x + (c.kind !== 'adv' ? 4.6 : 3.8), y1: c.y + (c.kind !== 'adv' ? 4.2 : 3.6) }) : null;
+    const dev = ratio - grey;
+    const punched = !unseen && (discs ? Math.abs(dev) > DISC_HOLE : ratio < o.punchRatio);
+    const skip = { x0: c.x, y0: c.y, x1: c.x + (c.kind !== 'adv' ? 4.6 : 3.8), y1: c.y + (c.kind !== 'adv' ? 4.2 : 3.6) };
+    // the hole's own centre is only measurable when it is darker than the card; a light table leaves no visible edge
+    const hc = !punched ? null
+      : !discs ? holeCentre(g, H, { x: c.cx, y: c.cy }, ref, skip)
+      : dev < 0 ? holeCentre(g, H, { x: c.cx, y: c.cy }, ref, skip, (centre + grey * ref) / 2)
+      : null;
     return {
       kind: c.kind,
       n: c.n,
       punched,
       ratio,
-      uncertain: unseen || (ratio > o.uncertainBand[0] && ratio < o.uncertainBand[1]),
+      uncertain: unseen || (discs ? Math.abs(dev) > DISC_HOLE * 0.55 && Math.abs(dev) <= DISC_HOLE : ratio > o.uncertainBand[0] && ratio < o.uncertainBand[1]),
       ...(hc ?? {}),
     };
   });
@@ -598,7 +623,16 @@ export function readHalf(g: Gray, qrImg: Pt[], payload: DecodedPayload, o: Requi
   const bgRef = median(bgVals);
   if (!(paperRef > 0.15)) warnings.push('Photo is too dark — add light.');
   const contrastOk = Number.isFinite(bgRef) && bgRef < paperRef * 0.72;
-  if (!contrastOk) warnings.push('Place the halves apart on a dark surface so holes and the cut edge show.');
+  // Printed discs: if the surface under the card is about as bright as the printed grey, a hole looks like an intact disc.
+  // Say so, and mark every circle unsure rather than silently misreading some of them.
+  const surfRatio = bgRef / paperRef;
+  const ambiguousSurface = discs && Number.isFinite(surfRatio) && Math.abs(surfRatio - grey) < 0.26;
+  if (ambiguousSurface) {
+    readings.forEach((r) => { r.uncertain = true; });
+    warnings.push('This surface is about the same shade as the grey discs, so holes are hard to tell from discs. Put the card on a clearly darker or lighter surface.');
+  }
+  // printed-disc cards read on any plain surface; the cut edge is only extra evidence when the pairing code is there
+  if (!contrastOk && !(spec.discs && payload.pairing)) warnings.push(spec.discs ? 'The cut edge is hard to see on this surface; put the halves apart on a plain, contrasting surface.' : 'Place the halves apart on a dark surface so holes and the cut edge show.');
 
   // trace the cut edge
   const edgeXs: number[] = [];
@@ -648,6 +682,7 @@ export function readHalf(g: Gray, qrImg: Pt[], payload: DecodedPayload, o: Requi
     pxPerMm,
     paperRef,
     bgRef,
+    ...(ambiguousSurface ? { ambiguousSurface: true } : {}),
     days: readings.filter((r) => r.kind === 'day'),
     pm: readings.filter((r) => r.kind === 'pm'),
     adv: readings.filter((r) => r.kind === 'adv'),

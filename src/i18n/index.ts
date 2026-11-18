@@ -24,11 +24,20 @@ export const LANGS: Lang[] = [
 type Dict = Record<string, string>;
 
 const en: Dict = {
+  spkSurface: 'Put the card on a darker or lighter table.',
+  spkWorker: 'Show the worker half to the camera.',
+  spkEmployer: 'Now show the employer half.',
+  spkCloser: 'Move the card closer.',
+  spkLight: 'It is too dark. Add light.',
+  spkHold: 'Good. Hold still.',
+  spkDone: 'Captured.',
+  spkWhole: 'Show the whole card, flat.',
   appName: 'Stock & Foil',
   tagline: 'A tamper-proof work record that both sides hold.',
   stockTitle: 'STOCK · worker keeps',
   foilTitle: 'FOIL · employer keeps',
   keepStock: 'Worker keeps this half. Bring it on payday.',
+  discNote: 'Punch out each grey disc.',
   halfLegend: 'Two circles per day: left = first half, right = second half. Both = full day.',
   keepFoil: 'Employer keeps this half. Punch both together each day.',
   perDay: 'day',
@@ -83,9 +92,18 @@ const en: Dict = {
 };
 
 const hi: Dict = {
+  spkSurface: 'कार्ड को ज़्यादा गहरी या हल्की मेज़ पर रखिए।',
+  spkWorker: 'मज़दूर वाला हिस्सा कैमरे को दिखाइए।',
+  spkEmployer: 'अब मालिक वाला हिस्सा दिखाइए।',
+  spkCloser: 'कार्ड को पास लाइए।',
+  spkLight: 'अंधेरा है। रोशनी कीजिए।',
+  spkHold: 'ठीक है। हिलाइए मत।',
+  spkDone: 'हो गया।',
+  spkWhole: 'पूरा कार्ड सीधा दिखाइए।',
   tagline: 'छेड़छाड़-रोधी काम का रिकॉर्ड, जो दोनों पक्षों के पास रहता है।',
   stockTitle: 'स्टॉक · मज़दूर के पास',
   foilTitle: 'फ़ॉइल · मालिक के पास',
+  discNote: 'हर धूसर गोले को पंच करके निकालें।',
   halfLegend: 'हर दिन दो गोले: बायाँ = पहला आधा, दायाँ = दूसरा आधा। दोनों = पूरा दिन।',
   keepStock: 'यह हिस्सा मज़दूर रखे। पगार के दिन साथ लाए।',
   keepFoil: 'यह हिस्सा मालिक रखे। रोज़ दोनों हिस्से साथ रखकर छेद करें।',
@@ -124,6 +142,15 @@ const hi: Dict = {
 };
 
 const bn: Dict = {
+  spkSurface: 'কার্ডটি আরও গাঢ় বা হালকা টেবিলে রাখুন।',
+  discNote: 'প্রতিটি ধূসর চাকতি পাঞ্চ করে বের করুন।',
+  spkWorker: 'শ্রমিকের অংশ ক্যামেরায় দেখান।',
+  spkEmployer: 'এবার মালিকের অংশ দেখান।',
+  spkCloser: 'কার্ডটি কাছে আনুন।',
+  spkLight: 'অন্ধকার। আলো বাড়ান।',
+  spkHold: 'ঠিক আছে। নড়বেন না।',
+  spkDone: 'হয়ে গেছে।',
+  spkWhole: 'পুরো কার্ড সোজা করে দেখান।',
   tagline: 'জালিয়াতি-প্রতিরোধী কাজের হিসাব, যা দুই পক্ষের কাছেই থাকে।',
   stockTitle: 'স্টক · শ্রমিকের কাছে',
   foilTitle: 'ফয়েল · মালিকের কাছে',
@@ -142,6 +169,15 @@ const bn: Dict = {
 };
 
 const ta: Dict = {
+  spkSurface: 'கார்டை இன்னும் கருமையான அல்லது வெளிர் மேசையில் வையுங்கள்.',
+  discNote: 'ஒவ்வொரு சாம்பல் வட்டையும் குத்தி எடுங்கள்.',
+  spkWorker: 'தொழிலாளி பகுதியை கேமராவில் காட்டுங்கள்.',
+  spkEmployer: 'இப்போது முதலாளி பகுதியைக் காட்டுங்கள்.',
+  spkCloser: 'கார்டை அருகில் கொண்டு வாருங்கள்.',
+  spkLight: 'இருட்டாக உள்ளது. வெளிச்சம் கூட்டுங்கள்.',
+  spkHold: 'சரி. அசையாமல் பிடியுங்கள்.',
+  spkDone: 'முடிந்தது.',
+  spkWhole: 'முழு கார்டையும் நேராகக் காட்டுங்கள்.',
   tagline: 'இரு தரப்பிடமும் இருக்கும், மாற்ற முடியாத வேலைப் பதிவு.',
   stockTitle: 'ஸ்டாக் · தொழிலாளியிடம்',
   foilTitle: 'ஃபாயில் · முதலாளியிடம்',
@@ -160,9 +196,18 @@ const ta: Dict = {
 };
 
 const es: Dict = {
+  spkSurface: 'Ponga la tarjeta sobre una mesa más oscura o más clara.',
+  spkWorker: 'Muestre la mitad del trabajador a la cámara.',
+  spkEmployer: 'Ahora muestre la mitad del empleador.',
+  spkCloser: 'Acerque la tarjeta.',
+  spkLight: 'Está muy oscuro. Ponga más luz.',
+  spkHold: 'Bien. No se mueva.',
+  spkDone: 'Listo.',
+  spkWhole: 'Muestre toda la tarjeta, plana.',
   tagline: 'Un registro de trabajo a prueba de manipulaciones que ambas partes conservan.',
   stockTitle: 'MATRIZ · la guarda el trabajador',
   foilTitle: 'TALÓN · lo guarda el empleador',
+  discNote: 'Perfora cada disco gris.',
   halfLegend: 'Dos círculos por día: izquierda = primera mitad, derecha = segunda. Ambos = día completo.',
   keepStock: 'El trabajador guarda esta mitad. Debe traerla el día de pago.',
   keepFoil: 'El empleador guarda esta mitad. Perforen ambas juntas cada día.',
@@ -202,6 +247,15 @@ const es: Dict = {
 };
 
 const sw: Dict = {
+  spkSurface: 'Weka kadi kwenye meza nyeusi zaidi au nyepesi zaidi.',
+  discNote: 'Toboa kila duara la kijivu.',
+  spkWorker: 'Onyesha nusu ya mfanyakazi kwa kamera.',
+  spkEmployer: 'Sasa onyesha nusu ya mwajiri.',
+  spkCloser: 'Leta kadi karibu.',
+  spkLight: 'Kuna giza. Ongeza mwanga.',
+  spkHold: 'Vizuri. Usisogee.',
+  spkDone: 'Imekamilika.',
+  spkWhole: 'Onyesha kadi nzima, tambarare.',
   tagline: 'Rekodi ya kazi isiyoweza kughushiwa, inayoshikwa na pande zote mbili.',
   stockTitle: 'STOKI · mfanyakazi anashika',
   foilTitle: 'FOILI · mwajiri anashika',

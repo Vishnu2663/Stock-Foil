@@ -21,7 +21,7 @@ function Gear() {
  */
 /** Section tiles: one line-icon language and a colour per section. */
 const NAV_HUE: Record<string, string> = { home: '#f0a24b', issue: '#6aa9ff', scan: '#ff6a55', members: '#9be37a', crew: '#e0925f', story: '#ff8a3d', records: '#6fd39a', more: '#b99cff' };
-function NavIcon({ id, fallback }: { id: string; fallback?: string }) {
+export function NavIcon({ id, fallback }: { id: string; fallback?: string }) {
   const g: Record<string, JSX.Element> = {
     home: <><path d="M4 11l8-6.5 8 6.5" /><path d="M6 10v9h12v-9" /><path d="M10 19v-5h4v5" /></>,
     issue: <><rect x="3" y="6" width="18" height="12" rx="2.5" /><path d="M3 10.5h18M7 15h4" /></>,
@@ -167,6 +167,9 @@ export function TopNav({ route, primary, groups, settings }: { route: string; pr
             <b>&amp; Foil</b>
           </span>
         </a>
+        <a className={`cta-top ${route === 'scan' ? 'on' : ''}`} href="#/scan" aria-label="Payday scan" title="Payday scan">
+          <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M4 8V6.5A2.5 2.5 0 0 1 6.5 4H8M16 4h1.5A2.5 2.5 0 0 1 20 6.5V8M20 16v1.5a2.5 2.5 0 0 1-2.5 2.5H16M8 20H6.5A2.5 2.5 0 0 1 4 17.5V16" /><circle cx="12" cy="12" r="3" /></svg>
+        </a>
         <button className="burger" aria-expanded={panel} aria-controls="mainnav" aria-label="Menu" onClick={() => setPanel((p) => !p)}>
           <span className="bars" aria-hidden><i /><i /><i /></span> <span className="burger-label">Menu</span>
         </button>
@@ -187,7 +190,7 @@ export function TopNav({ route, primary, groups, settings }: { route: string; pr
         >
           {pill && <span className="nav-pill" data-tone={pill.tone} style={{ transform: `translate(${pill.x}px, ${pill.y}px)`, width: pill.w, height: pill.h }} aria-hidden />}
           {primary.map((i) => (
-            <a key={i.route} href={`#/${i.route}`} style={{ ['--hue' as string]: NAV_HUE[i.route] ?? '#ff8a3d' }} className={`${route === i.route ? 'on' : ''} ${i.accent ? 'accent' : ''}`} aria-current={route === i.route ? 'page' : undefined}><NavIcon id={i.route} fallback={i.icon} /><span className="nav-lbl">{i.label}</span></a>
+            <a key={i.route} href={`#/${i.route}`} style={{ ['--hue' as string]: NAV_HUE[i.route] ?? '#ff8a3d' }} className={`${route === i.route ? 'on' : ''} ${i.accent ? 'accent' : ''} ${i.route === 'scan' ? 'cta' : ''}`} aria-current={route === i.route ? 'page' : undefined}><NavIcon id={i.route} fallback={i.icon} /><span className="nav-lbl">{i.label}</span></a>
           ))}
           {groups.map((g) => {
             const active = g.items.some((i) => i.route === route);
@@ -220,7 +223,7 @@ export function TopNav({ route, primary, groups, settings }: { route: string; pr
     {/* phones: the sections you use every day sit under the thumb; everything else is in the More sheet */}
     <nav className="mtabs" aria-label="Main">
       {tabs.map((i) => (
-        <a key={i.route} href={`#/${i.route}`} className={`mtab ${route === i.route ? 'on' : ''} ${i.route === 'scan' ? 'main' : ''}`} style={{ ['--hue' as string]: NAV_HUE[i.route] ?? '#ff8a3d' }} aria-current={route === i.route ? 'page' : undefined}>
+        <a key={i.route} href={`#/${i.route}`} className={`mtab ${route === i.route ? 'on' : ''} `} style={{ ['--hue' as string]: NAV_HUE[i.route] ?? '#ff8a3d' }} aria-current={route === i.route ? 'page' : undefined}>
           <NavIcon id={i.route} fallback={i.icon} /><span>{i.label}</span>
         </a>
       ))}

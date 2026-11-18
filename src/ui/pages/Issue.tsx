@@ -32,12 +32,14 @@ export function Issue({ initial, draft }: { initial?: CardSpec; draft?: Partial<
   const [pairing, setPairing] = useState<Pairing>(initial?.pairing ?? newPairing());
   // half-day circles: two punch circles per date. On for new cards; a reprint keeps the card as printed.
   const [halves, setHalves] = useState(initial ? !!initial.halves : seed?.halves ?? true);
+  // printed grey discs: the card can be photographed on any plain table, not only a dark one
+  const [discs, setDiscs] = useState(initial ? !!initial.discs : seed?.discs ?? true);
 
   const spec = useMemo(() => {
     const [y, m] = ym.split('-').map(Number);
-    return newCardSpec({ id, year: y || now.getFullYear(), month: m || 1, rateMinor: Math.round(rate * 100), advMinor: Math.round(adv * 100), currency, worker, employer, lang, carryMinor: Math.round(carry * 100), pairing: paired ? pairing : undefined, halves, revisedFrom: editing });
+    return newCardSpec({ id, year: y || now.getFullYear(), month: m || 1, rateMinor: Math.round(rate * 100), advMinor: Math.round(adv * 100), currency, worker, employer, lang, carryMinor: Math.round(carry * 100), pairing: paired ? pairing : undefined, halves, discs, revisedFrom: editing });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id, ym, rate, adv, currency, worker, employer, lang, carry, paired, pairing, halves, editing]);
+  }, [id, ym, rate, adv, currency, worker, employer, lang, carry, paired, pairing, halves, discs, editing]);
   const svg = useMemo(() => sheetSvg(spec, lang), [spec, lang]);
   /** save the card; an edited card replaces the one it revises */
   const persist = () => {
@@ -83,6 +85,13 @@ export function Issue({ initial, draft }: { initial?: CardSpec; draft?: Partial<
             <i aria-hidden />
             <span><b>Half-day circles</b> <em className="pill ok">two per date</em>
               <small>{reprinting ? 'A reprint keeps the card exactly as it was.' : 'Every date gets two punch circles: left for the first half, right for the second. One circle is half a day\'s wage, both is a full day, so a half day can be recorded and scanned without doubt.'}</small>
+            </span>
+          </label>
+          <label className={`switch ${discs ? 'on' : ''} ${reprinting ? 'dis' : ''}`}>
+            <input type="checkbox" checked={discs} disabled={reprinting} onChange={(e) => setDiscs(e.target.checked)} />
+            <i aria-hidden />
+            <span><b>Printed grey discs</b> <em className="pill ok">any table</em>
+              <small>{reprinting ? 'A reprint keeps the card exactly as it was.' : 'A grey disc is printed in every circle, and punching removes it. The card can then be photographed on any plain surface, not only a dark cloth.'}</small>
             </span>
           </label>
           <div className="field"><label>Language on the card and slip</label>

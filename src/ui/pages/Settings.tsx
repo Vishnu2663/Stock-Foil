@@ -56,6 +56,13 @@ export function Settings() {
             <select value={settings.lang} onChange={(e) => set({ lang: e.target.value })}>{LANGS.map((l) => <option key={l.code} value={l.code}>{l.name}</option>)}</select>
             <div className="small muted sans" style={{ marginTop: 4 }}>The one language for the whole app: scan results, the pay slip, the plain-words explanation and read-aloud. New cards are printed in it too (you can still change that per card).</div>
           </div>
+          <label className={`switch ${settings.simple ? 'on' : ''}`} style={{ marginBottom: 14 }}>
+            <input type="checkbox" checked={!!settings.simple} onChange={(e) => set({ simple: e.target.checked })} />
+            <i aria-hidden />
+            <span><b>Pictures and voice mode</b> <em className="pill ok">for workers who cannot read</em>
+              <small>Big pictures and buttons, a Listen button on every page, spoken instructions while scanning, and the result shown as suns for the days and notes to hand over, read aloud in your language.</small>
+            </span>
+          </label>
           <div className="field"><label>Read-aloud speed: {settings.speakRate}</label><input type="range" min={0.5} max={1.4} step={0.05} value={settings.speakRate} onChange={(e) => set({ speakRate: Number(e.target.value) })} /></div>
           <button disabled={!speechSupported()} onClick={() => speak('Stock and Foil', settings.lang, settings.speakRate)}>🔊 Test voice</button>
           {!speechSupported() && <span className="small muted sans"> Voice not supported here.</span>}
