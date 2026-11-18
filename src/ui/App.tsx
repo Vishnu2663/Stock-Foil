@@ -20,6 +20,7 @@ import { Scan } from './pages/Scan';
 import { Settings } from './pages/Settings';
 import { TopNav } from './components/TopNav';
 import { initReveal, initRipple, initScrollPause, initTilt } from './fx';
+import { setUiLanguage } from '../i18n/dom';
 import { HolesField } from './components/HolesField';
 
 const ROUTES = ['home', 'issue', 'punch', 'scan', 'members', 'crew', 'income', 'calibrate', 'demo', 'story', 'lab', 'history', 'ledger', 'about', 'settings'] as const;
@@ -53,6 +54,8 @@ export function App() {
   }, [route]);
   useEffect(() => {
     document.documentElement.lang = settings.lang;
+    // the whole page, not just the parts that already have translations
+    void setUiLanguage(settings.lang);
   }, [settings.lang]);
 
   const go = useCallback((r: string) => {

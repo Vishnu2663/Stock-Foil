@@ -70,7 +70,7 @@ export function TopNav({ route, primary, groups, settings }: { route: string; pr
 
   useEffect(() => {
     const down = (e: MouseEvent) => {
-      if (root.current && !root.current.contains(e.target as Node)) {
+      if (root.current && !root.current.contains(e.target as Node) && !(e.target as Element).closest?.('.mtabs')) {
         setOpenMenu(null);
         setPanel(false);
       }
@@ -153,7 +153,9 @@ export function TopNav({ route, primary, groups, settings }: { route: string; pr
     }
   };
 
+  const tabs = ['home', 'issue', 'scan', 'members'].map((r) => primary.find((i) => i.route === r)).filter((i): i is NavItem => !!i);
   return (
+    <>
     <header className={`top ${scrolled ? 'scrolled' : ''}`} ref={root}>
       <i className="scroll-progress" style={{ transform: `scaleX(${prog})` }} aria-hidden />
       <div className="in">
@@ -215,5 +217,18 @@ export function TopNav({ route, primary, groups, settings }: { route: string; pr
         </nav>
       </div>
     </header>
+    {/* phones: the sections you use every day sit under the thumb; everything else is in the More sheet */}
+    <nav className="mtabs" aria-label="Main">
+      {tabs.map((i) => (
+        <a key={i.route} href={`#/${i.route}`} className={`mtab ${route === i.route ? 'on' : ''} ${i.route === 'scan' ? 'main' : ''}`} style={{ ['--hue' as string]: NAV_HUE[i.route] ?? '#ff8a3d' }} aria-current={route === i.route ? 'page' : undefined}>
+          <NavIcon id={i.route} fallback={i.icon} /><span>{i.label}</span>
+        </a>
+      ))}
+      <button className={`mtab more ${panel ? 'on' : ''}`} style={{ ['--hue' as string]: NAV_HUE.more }} aria-expanded={panel} aria-controls="mainnav" onClick={() => setPanel((p) => !p)}>
+        <NavIcon id="more" /><span>More</span>
+      </button>
+    </nav>
+    {panel && <div className="sheet-dim" onClick={() => setPanel(false)} aria-hidden />}
+    </>
   );
 }

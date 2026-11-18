@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { formatMoney } from '../../core/card';
 import { speak, speechSupported, stopSpeaking } from '../../ai/speech';
 import { offlineExplain } from '../../ai';
-import { LANGS, monthName, t } from '../../i18n';
+import { monthName, t } from '../../i18n';
 import { splitDays } from '../../core/wages';
 import type { PairResult } from '../../vision/pair';
 import { useApp } from '../ctx';
@@ -109,15 +109,5 @@ export function Slip({ r, lang, explain }: { r: PairResult; lang: string; explai
         )}
       </div>
     </div>
-  );
-}
-
-export function LangPicker({ value, onChange }: { value: string; onChange: (l: string) => void }) {
-  return (
-    <select value={value} onChange={(e) => onChange(e.target.value)} aria-label="Language" style={{ width: 'auto' }}>
-      {LANGS.map((l) => (
-        <option key={l.code} value={l.code}>{l.name}</option>
-      ))}
-    </select>
   );
 }

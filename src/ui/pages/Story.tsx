@@ -28,7 +28,7 @@ function Embers({ on }: { on: boolean }) {
     const size = () => { c.width = Math.max(1, c.clientWidth * dpr); c.height = Math.max(1, c.clientHeight * dpr); };
     size();
     const spawn = (init: boolean) => ({ x: Math.random(), y: init ? Math.random() : 1.04, vx: (Math.random() - 0.5) * 0.03, vy: -(0.06 + Math.random() * 0.14), r: 0.7 + Math.random() * 2.4, ph: Math.random() * 6.28 });
-    const ps = Array.from({ length: 64 }, () => spawn(true));
+    const ps = Array.from({ length: document.body.classList.contains('lite') ? 22 : 64 }, () => spawn(true));
     let last = performance.now();
     let raf = 0;
     const tick = (t: number) => {
@@ -70,7 +70,7 @@ const TONGUES = [
 ];
 
 function Fire() {
-  const calm = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const calm = typeof window !== 'undefined' && (window.matchMedia('(prefers-reduced-motion: reduce)').matches || document.body.classList.contains('lite')); // phones: a still flame filter, the flames still move
   const base = 238;
   return (
     <svg viewBox="0 0 520 296" className="haunt-art" role="img" aria-label="Tally sticks burning in a furnace beneath the Houses of Parliament">
@@ -220,6 +220,9 @@ export function Story({ go }: { go: (r: string) => void }) {
   const [pace, setPaceState] = useState<number>(() => { try { const v = Number(localStorage.getItem('sf.storyrate')); return v >= 0.6 && v <= 1.2 ? v : 0.85; } catch { return 0.85; } });
   const setPace = (n: number) => { setPaceState(n); try { localStorage.setItem('sf.storyrate', String(n)); } catch { /* ignore */ } };
   const setLang = (c: string) => { setLangState(c); try { localStorage.setItem('sf.storylang', c); } catch { /* ignore */ } };
+  // the app's language (Settings) drives the story too; the picker below only adds the extra story languages
+  useEffect(() => { if (STORY_LANGS.some((p) => p.code === settings.lang)) setLang(settings.lang); // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settings.lang]);
   const [burn, setBurn] = useState(false);
   const token = useRef(0);
   const pack = storyPack(lang);

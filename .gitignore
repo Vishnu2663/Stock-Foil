@@ -4,3 +4,9 @@ dist
 .DS_Store
 .claude/
 tests/fixtures/
+
+# translation work files (the finished packs src/i18n/ui/<lang>.json are committed)
+src/i18n/ui/*.c[0-9]*.json
+src/i18n/ui/*.missing.json
+src/i18n/ui/*.part*.json
+src/i18n/ui/*.txt

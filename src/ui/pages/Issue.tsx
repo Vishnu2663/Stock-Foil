@@ -108,7 +108,7 @@ export function Issue({ initial, draft }: { initial?: CardSpec; draft?: Partial<
           </details>
         </div>
         <div>
-          <div className="sheetprev print-area" dangerouslySetInnerHTML={{ __html: svg }} />
+          <div className="sheetprev print-area" data-notranslate dangerouslySetInnerHTML={{ __html: svg }} />
           <p className="small muted sans no-print" style={{ textAlign: 'center', marginTop: 6 }}>Card {spec.id} · its wavy cut is derived from this id, so no two cards fit together.</p>
         </div>
       </div>

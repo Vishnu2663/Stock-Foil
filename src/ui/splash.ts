@@ -1,7 +1,9 @@
 /**
- * Opening loader. index.html paints it straight away; once the app has rendered (and fonts are ready,
- * and the loader has been on screen long enough to read as intentional), the mark flies into the
- * header's brand spot while the cover fades, so the loader becomes the page.
+ * Opening loader. index.html paints it straight away: a scaled-up copy of the header brand with a slow
+ * progress line. Once the app has rendered (and fonts are ready, and the loader has been up long enough to
+ * read as intentional) the copy flies to the header brand and scales down to exactly its size, the cover
+ * fades, and the real brand takes over on the very frame the copy lands. Same geometry, so there is never
+ * a second logo on screen.
  */
 import { reducedMotion } from './fx';
 
@@ -22,24 +24,22 @@ function finish(sp: HTMLElement) {
   const mark = sp.querySelector<HTMLElement>('.sp-brand');
   const logo = document.querySelector<SVGElement>('.top .brand > svg');
   const wm = document.querySelector<HTMLElement>('.top .brand .wm');
-  if (reducedMotion() || !mark || !logo || !wm) {
+  const hidden = !logo || !logo.getBoundingClientRect().width; // e.g. the header is not laid out yet
+  if (reducedMotion() || !mark || !logo || !wm || hidden) {
     sp.classList.add('gone');
-    setTimeout(end, 450);
+    setTimeout(end, 480);
     return;
   }
   setTimeout(() => {
-    const from = mark.getBoundingClientRect();
     const a = logo.getBoundingClientRect();
     const b = wm.getBoundingClientRect();
-    const to = { left: Math.min(a.left, b.left), top: Math.min(a.top, b.top), right: Math.max(a.right, b.right), bottom: Math.max(a.bottom, b.bottom) };
-    const scale = (to.right - to.left) / from.width;
-    // land on the header brand, centred on it
-    const dx = to.left - from.left;
-    const dy = to.top + ((to.bottom - to.top) - from.height * scale) / 2 - from.top;
+    const left = Math.min(a.left, b.left);
+    const top = Math.min(a.top, b.top);
     sp.classList.add('merge');
-    mark.style.transform = `translate(${dx}px, ${dy}px) scale(${scale})`;
-    // the real header brand appears exactly as the flying one arrives
-    setTimeout(() => document.body.classList.remove('splashing'), 900);
-    setTimeout(end, 1150);
+    mark.style.transform = `translate(${left}px, ${top}px) scale(1)`;
+    let landed = false;
+    const land = () => { if (landed) return; landed = true; end(); };
+    mark.addEventListener('transitionend', (e) => { if (e.propertyName === 'transform') land(); });
+    setTimeout(land, 1200); // safety net if no transition event arrives
   }, 380);
 }

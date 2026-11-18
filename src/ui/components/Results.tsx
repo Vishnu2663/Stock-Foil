@@ -14,7 +14,7 @@ import type { RGBA } from '../../vision/image';
 import { verifyPair } from '../../vision/pair';
 import { useApp } from '../ctx';
 import { downloadPhoto, drawOverlay } from '../imageIO';
-import { LangPicker, Slip } from './Slip';
+import { Slip } from './Slip';
 
 export interface Captured {
   photo: RGBA;
@@ -35,7 +35,8 @@ function applyEdits(h: HalfScan, edits: Edits): HalfScan {
 
 export function Results({ stock, foil, onReset }: { stock: Captured; foil: Captured; onReset: () => void }) {
   const { settings, t: tt, toast, startCard } = useApp();
-  const [lang, setLang] = useState(stock.half.payload.spec.lang || settings.lang);
+  // one language for the whole app, chosen in Settings (the result screen no longer has its own picker)
+  const lang = settings.lang;
   const [edits, setEdits] = useState<Edits>({});
   const [sel, setSel] = useState<number | null>(null);
   const [showSlip, setShowSlip] = useState(false);
@@ -48,6 +49,7 @@ export function Results({ stock, foil, onReset }: { stock: Captured; foil: Captu
   const cs = useRef<HTMLCanvasElement>(null);
   const cf = useRef<HTMLCanvasElement>(null);
 
+  useEffect(() => { setExplain(null); }, [lang]); // an explanation written in the old language is dropped
   const sH = useMemo(() => applyEdits(stock.half, edits), [stock, edits]);
   const fH = useMemo(() => applyEdits(foil.half, edits), [foil, edits]);
   const rateChange = wc.on ? { fromDay: Math.max(1, Math.round(wc.from) || 1), rateMinor: Math.min(MAX_AMOUNT_MAJOR, Math.max(0, wc.rate)) * 100 } : undefined;
@@ -167,9 +169,6 @@ export function Results({ stock, foil, onReset }: { stock: Captured; foil: Captu
           <div className="small muted sans">
             {monthName(lang, spec.month)} {spec.year} · {spec.worker || '—'} / {spec.employer || '—'} · {t(lang, 'cardCode')} {r.code}
           </div>
-        </div>
-        <div style={{ marginLeft: 'auto' }} className="no-print">
-          <LangPicker value={lang} onChange={(l) => { setLang(l); setExplain(null); }} />
         </div>
       </div>
 

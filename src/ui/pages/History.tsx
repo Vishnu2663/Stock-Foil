@@ -74,13 +74,13 @@ export function History({ go }: { go: (r: string) => void }) {
             <tbody>
               {shown.map((r) => (
                 <tr key={r.key}>
-                  <td>{r.month}</td>
-                  <td>{r.worker || '—'}</td>
-                  <td>{r.employer || '—'}</td>
-                  <td className="num">{r.days ?? '—'}</td>
-                  <td className="num">{m(r.amountMinor, r.currency)}{r.disputedMinor > 0 && <div className="small">⚠ {m(r.disputedMinor, r.currency)} disputed</div>}</td>
-                  <td><span className="pill">{LABEL[r.status]}</span></td>
-                  <td className="nowrap">{new Date(r.statusAt ?? r.scanAt).toLocaleDateString()}{r.scans > 1 && <div className="small">{r.scans} scans</div>}</td>
+                  <td><span className="cl">Month</span>{r.month}</td>
+                  <td><span className="cl">Worker</span>{r.worker || '—'}</td>
+                  <td><span className="cl">Employer</span>{r.employer || '—'}</td>
+                  <td className="num"><span className="cl">Days</span>{r.days ?? '—'}</td>
+                  <td className="num"><span className="cl">Amount</span>{m(r.amountMinor, r.currency)}{r.disputedMinor > 0 && <div className="small">⚠ {m(r.disputedMinor, r.currency)} disputed</div>}</td>
+                  <td><span className="cl">Status</span><span className="pill">{LABEL[r.status]}</span></td>
+                  <td className="nowrap"><span className="cl">Date</span>{new Date(r.statusAt ?? r.scanAt).toLocaleDateString()}{r.scans > 1 && <div className="small">{r.scans} scans</div>}</td>
                   <td>{r.status !== 'paid' && r.amountMinor > 0 && (confirming === r.key ? (
                     <div className="confirm-inline">
                       <span className="small">Paid {m(r.amountMinor, r.currency)}? Final.</span>

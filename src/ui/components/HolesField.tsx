@@ -9,7 +9,7 @@ export function HolesField() {
   const ref = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
     const c = ref.current;
-    if (!c || reducedMotion()) return;
+    if (!c || reducedMotion() || document.body.classList.contains('lite')) return; // no floating holes on phones
     const ctx = c.getContext('2d')!;
     const dpr = Math.min(2, window.devicePixelRatio || 1);
     const size = () => { c.width = innerWidth * dpr; c.height = innerHeight * dpr; };

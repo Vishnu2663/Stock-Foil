@@ -3,6 +3,7 @@ import type { RGBA } from '../../vision/image';
 import { scanPhotoAsync } from '../scanAsync';
 import { videoFrameToRGBA } from '../imageIO';
 import { useApp } from '../ctx';
+import { BtnIcon } from './BtnIcon';
 
 /**
  * Live camera that captures by itself. About twice a second a frame goes through
@@ -20,6 +21,10 @@ export function Camera({ have, onCapture, onClose }: { have: { S: boolean; F: bo
   const [auto, setAuto] = useState(true);
   const [err, setErr] = useState('');
   const [flash, setFlash] = useState('');
+  const [torchOk, setTorchOk] = useState(false);
+  const [torch, setTorch] = useState(false);
+  const trackRef = useRef<MediaStreamTrack | null>(null);
+  const paused = useRef(false);
   const autoRef = useRef(true);
   const haveRef = useRef(have);
   const propHave = useRef(have);
@@ -36,13 +41,29 @@ export function Camera({ have, onCapture, onClose }: { have: { S: boolean; F: bo
     let alive = true;
     (async () => {
       try {
-        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false });
+        // ask for the rear camera at a sensible size, and fall back step by step: some phones refuse the size or the facing mode
+        const tries: MediaStreamConstraints[] = [
+          { video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false },
+          { video: { facingMode: 'environment' }, audio: false },
+          { video: true, audio: false },
+        ];
+        let lastErr: unknown;
+        for (const c of tries) {
+          try { stream = await navigator.mediaDevices.getUserMedia(c); break; } catch (e) { lastErr = e; if ((e as DOMException)?.name === 'NotAllowedError') throw e; }
+        }
+        if (!stream) throw lastErr;
         if (!alive) { stream.getTracks().forEach((t) => t.stop()); return; }
         const v = vref.current!;
         v.srcObject = stream;
         await v.play();
+        // phone extras, used only where the camera offers them: continuous focus and the torch
+        const track = stream.getVideoTracks()[0];
+        trackRef.current = track;
+        const caps = (track.getCapabilities?.() ?? {}) as { torch?: boolean; focusMode?: string[] };
+        setTorchOk(!!caps.torch);
+        if (caps.focusMode?.includes('continuous')) track.applyConstraints({ advanced: [{ focusMode: 'continuous' } as MediaTrackConstraintSet] }).catch(() => undefined);
         timer = window.setInterval(() => {
-          if (busy.current || !v.videoWidth || Date.now() - lastCapture.current < 1800) return;
+          if (busy.current || paused.current || !v.videoWidth || Date.now() - lastCapture.current < 1800) return;
           busy.current = true;
           // Scan at full capture resolution (small/skewed QR codes need the pixels) and
           // capture this very frame if it is good, so what is checked is what is saved.
@@ -66,7 +87,7 @@ export function Camera({ have, onCapture, onClose }: { have: { S: boolean; F: bo
               }
               // Block only on things that make the PUNCH reading unreliable. Cut-edge or
               // background warnings (fingers over the edge, bright room) do not block capture.
-              const unseen = [...h.days, ...h.adv].some((c) => !Number.isFinite(c.ratio));
+              const unseen = [...h.days, ...h.pm, ...h.adv].some((c) => !Number.isFinite(c.ratio));
               const reason = h.fiducialsFound < 4 ? `Only ${h.fiducialsFound}/4 corner squares seen: show the whole half, flat to the camera.`
                 : unseen ? 'Some punch spots are cut off: show the whole half.'
                 : h.pxPerMm < 2.5 ? 'Move the half closer to the camera.'
@@ -92,7 +113,8 @@ export function Camera({ have, onCapture, onClose }: { have: { S: boolean; F: bo
               } else {
                 const d = h.days.filter((x) => x.punched).map((x) => x.n);
                 const a = h.adv.filter((x) => x.punched).map((x) => x.n);
-                const seen = `days ${d.length ? d.join(',') : 'none'} · advances ${a.length ? a.join(',') : 'none'}`;
+                const pm = h.pm.filter((x) => x.punched).length;
+                const seen = `days ${d.length ? d.join(',') : 'none'}${h.payload.spec.halves ? ` · second-half circles ${pm}` : ''} · advances ${a.length ? a.join(',') : 'none'}`;
                 const tip = h.edgeCoverage < 0.5 ? ' Tip: keep fingers off the wavy edge so it can be checked.' : '';
                 setHint((autoRef.current ? `✓ ${label} half detected (${seen}). Hold still…` : `✓ ${label} half detected (${seen}). Tap capture.`) + tip);
               }
@@ -101,10 +123,22 @@ export function Camera({ have, onCapture, onClose }: { have: { S: boolean; F: bo
             .finally(() => { busy.current = false; });
         }, 450);
       } catch (e) {
-        setErr(e instanceof Error ? e.message : 'Camera unavailable');
+        const name = (e as DOMException)?.name;
+        setErr(name === 'NotAllowedError' ? 'permission was denied. Allow the camera for this site in your browser settings, then try again'
+          : name === 'NotFoundError' ? 'no camera was found on this device'
+          : name === 'NotReadableError' ? 'another app is using the camera. Close it and try again'
+          : e instanceof Error ? e.message : 'camera unavailable');
       }
     })();
+    const onVis = () => {
+      const v = vref.current;
+      paused.current = document.hidden;
+      if (!v) return;
+      if (document.hidden) v.pause(); else v.play().catch(() => undefined);
+    };
+    document.addEventListener('visibilitychange', onVis);
     return () => {
+      document.removeEventListener('visibilitychange', onVis);
       alive = false;
       window.clearInterval(timer);
       stream?.getTracks().forEach((t) => t.stop());
@@ -115,7 +149,7 @@ export function Camera({ have, onCapture, onClose }: { have: { S: boolean; F: bo
   if (err)
     return (
       <div className="card">
-        <p>Camera not available: {err}. Use “Choose photos” instead (camera needs https or localhost).</p>
+        <p>Camera not available: {err}. You can use “Choose photos” instead (the camera needs https or localhost).</p>
         <button onClick={onClose}>Close</button>
       </div>
     );
@@ -133,6 +167,9 @@ export function Camera({ have, onCapture, onClose }: { have: { S: boolean; F: bo
         <label className="row sans" style={{ margin: 0, gap: 6 }}>
           <input type="checkbox" checked={auto} onChange={(e) => setAuto(e.target.checked)} /> Auto-capture
         </label>
+        {torchOk && (
+          <button className={torch ? 'primary' : ''} onClick={() => { const next = !torch; setTorch(next); trackRef.current?.applyConstraints({ advanced: [{ torch: next } as MediaTrackConstraintSet] }).catch(() => setTorch(false)); }} aria-pressed={torch}><BtnIcon name="bulb" /> Light</button>
+        )}
         <button disabled={!vref.current?.videoWidth} onClick={() => { const img = videoFrameToRGBA(vref.current!, 1600); onCapture(img, 'S'); }}>📸 Capture now</button>
         <button onClick={onClose}>Close camera</button>
       </div>

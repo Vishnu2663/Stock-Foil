@@ -13,13 +13,24 @@ export function canvasToRGBA(c: HTMLCanvasElement | OffscreenCanvas): RGBA {
 }
 
 export async function fileToRGBA(file: Blob, maxSide = MAX_SIDE): Promise<RGBA> {
-  const bmp = await createImageBitmap(file, { imageOrientation: 'from-image' });
-  const s = Math.min(1, maxSide / Math.max(bmp.width, bmp.height));
+  // createImageBitmap with an orientation option is missing on older phones: fall back to an <img>
+  let src: ImageBitmap | HTMLImageElement;
+  try {
+    src = await createImageBitmap(file, { imageOrientation: 'from-image' });
+  } catch {
+    const url = URL.createObjectURL(file);
+    try {
+      src = await new Promise<HTMLImageElement>((ok, fail) => { const im = new Image(); im.onload = () => ok(im); im.onerror = () => fail(new Error('image')); im.src = url; });
+    } finally { setTimeout(() => URL.revokeObjectURL(url), 5000); }
+  }
+  const w = 'naturalWidth' in src ? src.naturalWidth : src.width;
+  const h = 'naturalHeight' in src ? src.naturalHeight : src.height;
+  const s = Math.min(1, maxSide / Math.max(w, h));
   const c = document.createElement('canvas');
-  c.width = Math.round(bmp.width * s);
-  c.height = Math.round(bmp.height * s);
-  c.getContext('2d')!.drawImage(bmp, 0, 0, c.width, c.height);
-  bmp.close?.();
+  c.width = Math.round(w * s);
+  c.height = Math.round(h * s);
+  c.getContext('2d', { willReadFrequently: true })!.drawImage(src, 0, 0, c.width, c.height);
+  if ('close' in src) src.close();
   return canvasToRGBA(c);
 }
 
